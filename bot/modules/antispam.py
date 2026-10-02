@@ -97,9 +97,23 @@ async def check_message(
             except (discord.Forbidden, discord.HTTPException) as e:
                 logger.warning("Impossible de timeout %s : %s", author, e)
 
+        # Enregistrement SYSTÉMATIQUE dans la chaîne de preuves forensiques (Dashboard)
+        if append_evidence:
+            entry = await append_evidence(guild.id, "spam_flood_detected", {
+                "user_id": author.id,
+                "author_name": str(author),
+                "channel_id": channel.id,
+                "channel_name": getattr(channel, "name", str(channel.id)),
+                "warns": warns,
+                "messages_in_window": count,
+                "window_seconds": window_seconds,
+                "timeout_duration": duration,
+                "content_snippet": message.content[:200],
+            })
+
         # War room si 3+ warns
         if warns >= 3 and bus and append_evidence:
-            entry = await append_evidence(guild.id, "antispam_repeat_offender", {
+            await append_evidence(guild.id, "antispam_repeat_offender", {
                 "user_id": author.id,
                 "channel_id": channel.id,
                 "warns": warns,
@@ -111,7 +125,7 @@ async def check_message(
                 "score": 0.9,
                 "reason": "spam_repetitif",
                 "signals": {"warns": warns, "messages_in_window": count},
-                "evidence_hash": entry["hash"],
+                "evidence_hash": entry["hash"] if entry else "unhashed",
             })
 
     elif mute_seconds > 0 and isinstance(author, discord.Member):

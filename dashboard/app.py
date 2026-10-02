@@ -516,6 +516,10 @@ async def tab_forensics(request: Request, guild_id: int, user: dict = Depends(re
         "suspicious_account_detected": ("COMPTE SUSPECT", "warning", "👤", "accounts"),
         "suspicious_message_detected": ("MESSAGE SUSPECT", "warning", "💬", "scam"),
         "scam_detected": ("PHISHING / SCAM", "danger", "🎣", "scam"),
+        "raid_threat_detected": ("MENACE DE RAID", "critical", "⚡", "nuke"),
+        "toxic_slur_detected": ("PROPOS HAINEUX", "critical", "🚫", "scam"),
+        "spam_flood_detected": ("SPAM / FLOOD", "warning", "🔇", "scam"),
+        "antispam_repeat_offender": ("MULTI-SPAM", "critical", "🚨", "scam"),
         "malware_blocked": ("MALWARE BLOQUÉ", "danger", "🦠", "malware"),
         "antinuke_bot_blocked": ("ANTI-NUKE BOT", "critical", "🤖", "nuke"),
         "antinuke_webhook_blocked": ("WEBHOOK SUSPECT", "critical", "🔗", "nuke"),
@@ -1095,6 +1099,10 @@ async def api_soc_events(guild_id: int, user: dict = Depends(require_auth)):
         "impersonation_detected": ("[USURPATION]", "warning"),
         "ghostping_detected": ("[GHOSTPING]", "warning"),
         "scam_detected": ("[PHISHING/SCAM]", "warning"),
+        "raid_threat_detected": ("[MENACE-RAID]", "critical"),
+        "toxic_slur_detected": ("[PROPOS-HAINEUX]", "critical"),
+        "spam_flood_detected": ("[SPAM-FLOOD]", "warning"),
+        "antispam_repeat_offender": ("[MULTI-SPAM]", "critical"),
         "voice_channel_renewed": ("[VOICE-RENEW]", "info"),
         "guild_snapshot_created": ("[BACKUP]", "success"),
         "guild_snapshot_restored": ("[RESTORE]", "success"),
@@ -1132,6 +1140,21 @@ async def api_soc_events(guild_id: int, user: dict = Depends(require_auth)):
         elif etype == "scam_detected":
             snip = data.get("content_snippet", "")[:40]
             desc = f"Phishing/Scam de #{uid} neutralisé : « {snip} »"
+        elif etype == "raid_threat_detected":
+            snip = data.get("content_snippet", "")[:45]
+            uname = data.get("author_name") or f"#{uid}"
+            desc = f"⚡ MENACE DE RAID de {uname} neutralisée : « {snip} »"
+        elif etype == "toxic_slur_detected":
+            snip = data.get("content_snippet", "")[:45]
+            uname = data.get("author_name") or f"#{uid}"
+            desc = f"🚫 Propos haineux/insulte de {uname} : « {snip} »"
+        elif etype == "spam_flood_detected":
+            snip = data.get("content_snippet", "")[:40]
+            uname = data.get("author_name") or f"#{uid}"
+            dur = data.get("timeout_duration", 60)
+            desc = f"🔇 Flood/Spam ({data.get('messages_in_window', '?')} msg) de {uname} : timeout {dur}s"
+        elif etype == "antispam_repeat_offender":
+            desc = f"🚨 Récidiviste spam #{uid} ({data.get('warns', 3)} avertissements) - War Room déclenchée"
         elif etype == "antinuke_bot_blocked":
             desc = f"Bot non-autorisé #{data.get('bot_id')} immédiatement expulsé (Invité par #{data.get('inviter_id')})"
         elif etype == "antinuke_webhook_blocked":

@@ -46,14 +46,26 @@ SUSPICIOUS_URL_RE = re.compile(
     re.IGNORECASE,
 )
 
-# 1. Menaces d'attaque, raid, nuke ou destruction du serveur
+# 1. Menaces directes d'attaque, raid, nuke, ddos ou destruction
 RAID_THREAT_RE = re.compile(
     r"\b(?:"
-    r"(?:je\s*vais|on\s*va|j'vais|jvais|go|on\s*go)\s*.{0,20}(?:raid|nuke|faire\s*sauter|crash|ddos|détruire|detruire|hack|hacker|dox|doxx|détruit)\s*.{0,20}(?:le\s*serv|ce\s*serv|le\s*serveur|ce\s*serveur|discord)\b"
-    r"|(?:je\s*préviens|je\s*previens|attention).{0,25}(?:faire\s*sauter|raid|nuke|crash|détruire|detruire)\s*.{0,20}(?:le\s*serv|ce\s*serv|le\s*serveur|ce\s*serveur)\b"
-    r"|(?:raid|nuke|faire\s*sauter|crash)\s*(?:ce|le)\s*(?:serv|serveur)\b"
-    r"|(?:serveur|serv)\s*.{0,15}(?:va\s*sauter|va\s*mourir|va\s*crash)\b"
+    r"(?:je\s*vais|on\s*va|j'vais|jvais|go|on\s*go|on\s*vient|je\s*viens|go\s*tous|venez)\s*.{0,15}(?:vous\s*)?(?:faire\s*(?:un\s*)?)?(?:raid|nuke|faire\s*sauter|crash|ddos|détruire|detruire|hack|hacker|dox|doxx|détruit|baiser)\b"
+    r"|(?:je\s*préviens|je\s*previens|attention).{0,25}(?:faire\s*sauter|raid|nuke|crash|détruire|detruire)\b"
+    r"|(?:raid|nuke|faire\s*sauter|crash)\s*(?:ce|le|ce\s*serv|le\s*serv|ce\s*serveur|le\s*serveur|vous|tout)\b"
+    r"|(?:serveur|serv)\s*.{0,15}(?:va\s*sauter|va\s*mourir|va\s*crash|va\s*fermer)\b"
+    r"|(?:préparez|preparez)\s*vous\s*au\s*raid\b"
+    r"|(?:ez|noob|alors)\s*(?:le\s*)?raid\b"
+    r"|(?:c\'?est|cest)\s*(?:un\s*)?raid\b"
+    r"|(?:vous\s*allez\s*(?:vous\s*)?faire\s*(?:raid|nuke))\b"
     r")",
+    re.IGNORECASE,
+)
+
+# 1.bis Propos haineux, insultes racistes ou toxiques
+TOXIC_SLURS_RE = re.compile(
+    r"\b(?:"
+    r"n[eéè]gr[ooe]s?|n[i1]gg[ae]r?s?|bougnoules?|bamboulas?|youpins?|chintoks?|p[eéè]d[eéè]s?|salopes?|putes?|connards?"
+    r")\b",
     re.IGNORECASE,
 )
 
@@ -269,6 +281,7 @@ def analyze(
 
     # 3. Analyse lexicale multi-catégories
     raid_matches: list[str] = []
+    toxic_matches: list[str] = []
     kw_matches: list[str] = []
     money_matches: list[str] = []
     bio_matches: list[str] = []
@@ -280,6 +293,8 @@ def analyze(
         for var in _normalize_variants(full_text):
             if not raid_matches:
                 raid_matches = RAID_THREAT_RE.findall(var)
+            if not toxic_matches:
+                toxic_matches = TOXIC_SLURS_RE.findall(var)
             if not kw_matches:
                 kw_matches = SCAM_KEYWORDS_RE.findall(var)
             if not money_matches:
@@ -296,6 +311,11 @@ def analyze(
     # Menace de raid / nuke / crash : score critique maximal immédiat
     if raid_matches:
         result.reasons.append(f"menace d'attaque / raid / sabotage : « {raid_matches[0].strip()} »")
+        result.score = 1.0
+
+    # Propos haineux / insultes racistes / harcèlement
+    if toxic_matches:
+        result.reasons.append(f"propos haineux / insulte toxique : « {toxic_matches[0].strip()} »")
         result.score = 1.0
 
     if kw_matches:
@@ -384,8 +404,16 @@ async def handle_message(
     if not result.is_scam and recent:
         combined_text = "\n".join([m.content for _, m in recent if m.content] + [message.content])
         combined_res = analyze(combined_text, allow_invites=allow_invites)
+
+        # Analyse des messages découpés sans espaces (ex: "neg" + "ro" -> "negro")
+        joined_text = "".join([m.content.strip() for _, m in recent if m.content] + [message.content.strip()])
+        joined_res = analyze(joined_text, allow_invites=allow_invites)
+
         if combined_res.is_scam:
             result = combined_res
+            messages_to_clean.extend([m for _, m in recent if m.channel.id == channel.id])
+        elif joined_res.is_scam:
+            result = joined_res
             messages_to_clean.extend([m for _, m in recent if m.channel.id == channel.id])
 
     if not result.is_scam:
@@ -461,15 +489,23 @@ async def handle_message(
 
     # Chaîne de preuves + bus si score critique
     if append_evidence:
-        entry = await append_evidence(guild.id, "scam_detected", {
+        event_name = "raid_threat_detected" if any("menace d'attaque" in r or "raid" in r for r in result.reasons) else (
+            "toxic_slur_detected" if any("propos haineux" in r for r in result.reasons) else "scam_detected"
+        )
+        full_content_str = (
+            " ".join([m.content for m in messages_to_clean if m.content] + [message.content])
+            if messages_to_clean else message.content
+        )
+        entry = await append_evidence(guild.id, event_name, {
             "user_id": author.id,
             "author_name": str(author),
             "channel_id": channel.id,
+            "channel_name": getattr(channel, "name", str(channel.id)),
             "score": result.score,
             "reasons": result.reasons,
             "invite_links": result.invite_links,
             "suspicious_urls": result.suspicious_urls,
-            "content_snippet": message.content[:200],
+            "content_snippet": full_content_str[:250],
         })
         if bus and result.score >= 0.80:
             await bus.emit("risk_critical", {

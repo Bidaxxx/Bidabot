@@ -198,4 +198,40 @@ def test_bio_invite_flagged():
     assert any("bio" in r for r in result.reasons)
 
 
+def test_user_reported_raid_threats():
+    """Vérifie que les menaces directes comme 'je vais vous raid' sont détectées immédiatement dès le 1er message."""
+    phrases = [
+        "je vais vous raid",
+        "je vais raid",
+        "on va raid",
+        "on va vous raid",
+        "je vais faire un raid",
+        "c'est un raid",
+        "cest un raid",
+        "jvais nuke",
+        "go raid",
+        "vous allez vous faire raid",
+    ]
+    for p in phrases:
+        res = analyze(p)
+        assert res.is_scam, f"Échec de détection pour '{p}'"
+        assert res.score == 1.0
+        assert any("menace d'attaque" in r for r in res.reasons)
+
+
+def test_toxic_slurs_detection():
+    """Vérifie que les insultes haineuses et termes toxiques sont immédiatement interceptés."""
+    res1 = analyze("espece de negro va")
+    assert res1.is_scam
+    assert res1.score == 1.0
+    assert any("propos haineux" in r for r in res1.reasons)
+
+    # Découpage sans espaces (simulation de "neg" + "ro")
+    res2 = analyze("neg" + "ro")
+    assert res2.is_scam
+    assert res2.score == 1.0
+    assert any("propos haineux" in r for r in res2.reasons)
+
+
+
 

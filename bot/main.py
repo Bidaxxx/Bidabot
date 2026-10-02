@@ -1142,12 +1142,15 @@ async def on_message(message: discord.Message):
             append_evidence=_append_evidence,
         )
         if scam_result.is_scam:
+            is_raid = any("raid" in r or "menace d'attaque" in r for r in scam_result.reasons)
+            is_toxic = any("propos haineux" in r for r in scam_result.reasons)
+            title = "⚡ Menace de Raid détectée" if is_raid else ("🚫 Propos haineux détectés" if is_toxic else "⚠️ Contenu suspect détecté")
             await guild_dashboard.send_alert(
                 guild,
-                title="⚠️ Contenu suspect détecté",
+                title=title,
                 description=f"<@{message.author.id}> dans <#{message.channel.id}>\n"
                             + "\n".join(f"• {r}" for r in scam_result.reasons),
-                color=0xFF6600 if scam_result.score < 0.80 else 0xFF0000,
+                color=0xFF0033 if (is_raid or is_toxic) else (0xFF6600 if scam_result.score < 0.80 else 0xFF0000),
             )
             return
         elif scam_result.score >= 0.40:
