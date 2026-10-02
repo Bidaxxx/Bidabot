@@ -1,0 +1,97 @@
+<div class="whitelist-section">
+  <!-- Formulaire d'Exemption -->
+  <div class="card" style="margin-bottom: 16px;">
+    <div class="card-title">Ajouter une Exemption (Whitelist)</div>
+    <div class="card-desc">
+      Les rôles ou identifiants enregistrés ici sont exemptés des filtres anti-spam, anti-scam et analyses comportementales.
+    </div>
+
+    <form id="whitelist-add-form" onsubmit="addWhitelistItem(event, {{ guild_id }})" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end;">
+      <div style="flex: 2; min-width: 200px;">
+        <label class="form-label">ID Discord (Rôle ou Utilisateur)</label>
+        <input type="text" name="target_id" class="form-input" placeholder="Ex: 1553771834036457523" required style="font-family: var(--font-mono);">
+      </div>
+
+      <div style="flex: 1; min-width: 140px;">
+        <label class="form-label">Type</label>
+        <select name="target_type" class="form-select">
+          <option value="role">Rôle Staff / VIP</option>
+          <option value="user">Utilisateur / Bot Tiers</option>
+        </select>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-sm" style="padding: 8px 14px;">
+        Ajouter à la whitelist
+      </button>
+    </form>
+  </div>
+
+  <!-- Liste des Exemptions -->
+  <div class="card">
+    <div class="card-title">Exemptions Actives ({{ items|length }})</div>
+    <div class="card-desc">Les administrateurs du serveur bénéficient d'une immunité par défaut.</div>
+
+    <div style="overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>ID Discord</th>
+            <th>Ajouté le</th>
+            <th style="text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+            <tr>
+              <td>
+                {% if item.target_type == 'role' %}
+                  <span class="status-pill status-live">RÔLE</span>
+                {% else %}
+                  <span class="status-pill status-protected">UTILISATEUR</span>
+                {% endif %}
+              </td>
+              <td style="font-family: var(--font-mono); font-weight: 500;">{{ item.target_id }}</td>
+              <td style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);">
+                {{ item.created_at.strftime('%d/%m/%Y %H:%M') if item.created_at else 'N/A' }}
+              </td>
+              <td style="text-align: right;">
+                <button class="btn btn-secondary btn-sm" onclick="removeWhitelistItem({{ guild_id }}, {{ item.target_id }})">
+                  Retirer
+                </button>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="4" style="text-align: center; color: var(--text-dim); padding: 20px 0;">
+                Aucune exemption manuelle configurée.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  async function addWhitelistItem(e, guildId) {
+    e.preventDefault();
+    const form = document.getElementById('whitelist-add-form');
+    const formData = new FormData(form);
+    const res = await fetch(`/api/guild/${guildId}/whitelist/add`, { method: 'POST', body: formData });
+    if (res.ok) {
+      showToast("Exemption ajoutée.");
+      htmx.ajax('GET', `/dashboard/${guildId}/tab/whitelist`, { target: '#tab-content', swap: 'innerHTML' });
+    }
+  }
+
+  async function removeWhitelistItem(guildId, targetId) {
+    if (!confirm(`Retirer l'exemption pour ${targetId} ?`)) return;
+    const res = await fetch(`/api/guild/${guildId}/whitelist/remove/${targetId}`, { method: 'POST' });
+    if (res.ok) {
+      showToast("Exemption retirée.");
+      htmx.ajax('GET', `/dashboard/${guildId}/tab/whitelist`, { target: '#tab-content', swap: 'innerHTML' });
+    }
+  }
+</script>

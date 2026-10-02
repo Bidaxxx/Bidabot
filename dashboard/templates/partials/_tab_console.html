@@ -1,0 +1,193 @@
+<div class="console-section">
+  <!-- En-tête Terminal -->
+  <div class="card" style="margin-bottom: 12px; background: linear-gradient(135deg, rgba(16, 18, 27, 0.9) 0%, rgba(22, 26, 38, 0.8) 100%);">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+      <div>
+        <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
+          <span>💻</span> Console Web CLI Bidabot (Pilotage Direct)
+        </div>
+        <div class="card-desc">
+          Exécutez n'importe quelle commande de sécurité et d'administration directement depuis votre navigateur. Tapez <code class="mono">help</code> pour voir la liste des commandes disponibles.
+        </div>
+      </div>
+      <div>
+        <span class="status-pill status-protected" style="font-family: var(--font-mono); font-size: 10.5px;">
+          TERMINAL CONNECTÉ &bull; LATENCE 2ms
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Barre de Raccourcis Rapides (1-Clic) -->
+  <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+    <button class="cli-chip" onclick="executeQuickCommand('help')">help</button>
+    <button class="cli-chip" onclick="executeQuickCommand('status')">status</button>
+    <button class="cli-chip" onclick="executeQuickCommand('audit')">audit</button>
+    <button class="cli-chip" onclick="executeQuickCommand('lockdown on')">lockdown on</button>
+    <button class="cli-chip" onclick="executeQuickCommand('lockdown off')">lockdown off</button>
+    <button class="cli-chip" onclick="executeQuickCommand('raid purge 45')">raid purge 45</button>
+    <button class="cli-chip" onclick="executeQuickCommand('backup create Web-Routine')">backup create</button>
+    <button class="cli-chip" onclick="executeQuickCommand('pentest raid_attack')">pentest raid</button>
+    <button class="cli-chip" onclick="clearTerminalScreen()">clear</button>
+  </div>
+
+  <!-- Écran Terminal Interactif -->
+  <div class="card" style="background: #090a0d; border-color: rgba(88, 101, 242, 0.35); padding: 0; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.5);">
+    <!-- Barre de titre fenêtre terminal -->
+    <div style="background: #12131a; padding: 8px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06);">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #ff5f56;"></span>
+        <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #ffbd2e;"></span>
+        <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #27c93f;"></span>
+        <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); margin-left: 8px;">
+          bidabot@security-core:~/guild-{{ guild_id }} (bash)
+        </span>
+      </div>
+      <div style="font-family: var(--font-mono); font-size: 10.5px; color: var(--text-dim);">
+        UTF-8 &bull; SECURE IPC
+      </div>
+    </div>
+
+    <!-- Output du Terminal -->
+    <div id="terminal-screen" style="padding: 16px; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.6; min-height: 320px; max-height: 480px; overflow-y: auto; color: #d1d5db;">
+      <div style="color: #60a5fa; font-weight: 600;">
+        ╔═══════════════════════════════════════════════════════════════════════╗<br>
+        ║   BIDABOT ZERO-TRUST SECURITY ENGINE — CONSOLE INTERACTIVE CLI      ║<br>
+        ║   Tapez 'help' pour la documentation des commandes.                   ║<br>
+        ╚═══════════════════════════════════════════════════════════════════════╝
+      </div>
+      <div style="color: var(--text-dim); margin-top: 6px;">
+        Prêt pour l'exécution d'instructions sur le serveur Discord ID : {{ guild_id }}.
+      </div>
+    </div>
+
+    <!-- Ligne de saisie interactive -->
+    <div style="display: flex; align-items: center; background: #0f1015; padding: 10px 14px; border-top: 1px solid rgba(255,255,255,0.06);">
+      <span style="font-family: var(--font-mono); font-size: 12px; color: #00ff88; font-weight: 600; margin-right: 8px; white-space: nowrap;">
+        bidabot@core:~$
+      </span>
+      <input type="text" id="cli-input" autocomplete="off" spellcheck="false"
+             placeholder="Entrez une commande (ex: status, help, lockdown on)..."
+             style="flex: 1; background: transparent; border: none; outline: none; color: #fff; font-family: var(--font-mono); font-size: 13px;"
+             onkeydown="handleCliKeyDown(event, {{ guild_id }})" />
+      <button class="btn btn-primary btn-sm" onclick="submitCliCommand({{ guild_id }})" style="padding: 4px 10px; font-size: 11px;">
+        Exécuter ↵
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .cli-chip {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .cli-chip:hover {
+    color: #fff;
+    border-color: var(--accent);
+    background: rgba(88, 101, 242, 0.1);
+  }
+  .terminal-entry {
+    margin-top: 10px;
+    padding-top: 6px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.05);
+  }
+</style>
+
+<script>
+  let cliHistory = [];
+  let cliHistoryIndex = -1;
+
+  function handleCliKeyDown(e, guildId) {
+    if (e.key === 'Enter') {
+      submitCliCommand(guildId);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (cliHistory.length > 0) {
+        if (cliHistoryIndex === -1) cliHistoryIndex = cliHistory.length - 1;
+        else if (cliHistoryIndex > 0) cliHistoryIndex--;
+        document.getElementById('cli-input').value = cliHistory[cliHistoryIndex] || '';
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (cliHistoryIndex !== -1) {
+        if (cliHistoryIndex < cliHistory.length - 1) {
+          cliHistoryIndex++;
+          document.getElementById('cli-input').value = cliHistory[cliHistoryIndex];
+        } else {
+          cliHistoryIndex = -1;
+          document.getElementById('cli-input').value = '';
+        }
+      }
+    }
+  }
+
+  function executeQuickCommand(cmd) {
+    const input = document.getElementById('cli-input');
+    if (input) {
+      input.value = cmd;
+      input.focus();
+    }
+  }
+
+  function clearTerminalScreen() {
+    const screen = document.getElementById('terminal-screen');
+    if (screen) {
+      screen.innerHTML = '<div style="color: var(--text-dim);">[Terminal réinitialisé. Tapez "help" pour la liste des commandes.]</div>';
+    }
+  }
+
+  async function submitCliCommand(guildId) {
+    const input = document.getElementById('cli-input');
+    const cmd = input.value.trim();
+    if (!cmd) return;
+
+    input.value = '';
+    cliHistory.push(cmd);
+    cliHistoryIndex = -1;
+
+    if (cmd.toLowerCase() === 'clear' || cmd.toLowerCase() === 'cls') {
+      clearTerminalScreen();
+      return;
+    }
+
+    const screen = document.getElementById('terminal-screen');
+    const entry = document.createElement('div');
+    entry.className = 'terminal-entry';
+    entry.innerHTML = `<span style="color: #00ff88; font-weight: 600;">bidabot@core:~$</span> <span style="color: #fff;">${cmd}</span>\n<div style="color: var(--text-dim); margin-top: 2px;">[Exécution en cours...]</div>`;
+    screen.appendChild(entry);
+    screen.scrollTop = screen.scrollHeight;
+
+    try {
+      const fd = new FormData();
+      fd.append('command', cmd);
+
+      const res = await fetch(`/api/guild/${guildId}/cli`, {
+        method: 'POST',
+        body: fd,
+      });
+
+      const data = await res.json();
+      const outputColor = data.status === 'ok' ? '#34d399' : '#f87171';
+
+      entry.innerHTML = `
+        <span style="color: #00ff88; font-weight: 600;">bidabot@core:~$</span> <span style="color: #fff;">${cmd}</span>
+        <pre style="color: ${outputColor}; margin: 4px 0 0 0; white-space: pre-wrap; font-family: var(--font-mono);">${data.output}</pre>
+      `;
+    } catch (e) {
+      entry.innerHTML = `
+        <span style="color: #00ff88; font-weight: 600;">bidabot@core:~$</span> <span style="color: #fff;">${cmd}</span>
+        <pre style="color: #f87171; margin: 4px 0 0 0; font-family: var(--font-mono);">[ERREUR] Échec de communication avec l'API Bidabot.</pre>
+      `;
+    }
+
+    screen.scrollTop = screen.scrollHeight;
+  }
+</script>

@@ -1,0 +1,319 @@
+<div class="overview-section">
+  <!-- Métriques Principales -->
+  <div class="grid" style="grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px;">
+    <div class="stat">
+      <div class="lbl">Verrouillage</div>
+      <div class="val {{ 'bad' if lockdown_active else 'ok' }}" style="margin-top: 6px;">
+        {{ 'ACTIF' if lockdown_active else 'NORMAL' }}
+      </div>
+    </div>
+    <div class="stat">
+      <div class="lbl">Mode d'Action</div>
+      <div class="val {{ 'warn' if dry_run else 'ok' }}" style="margin-top: 6px;">
+        {{ 'SIMULATION' if dry_run else 'ACTIF' }}
+      </div>
+    </div>
+    <div class="stat">
+      <div class="lbl">War Rooms</div>
+      <div class="val" style="margin-top: 6px;">
+        {{ warrooms }}
+      </div>
+    </div>
+    <div class="stat">
+      <div class="lbl">Chaîne Ed25519</div>
+      <div class="val {{ 'ok' if chain_ok else 'bad' }}" style="margin-top: 6px;">
+        {{ 'VALIDE' if chain_ok else 'ERREUR' }} ({{ chain_len }})
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions Immédiates -->
+  <div class="card" style="margin-bottom: 16px;">
+    <div class="card-title">Interventions d'Urgence</div>
+    <div class="card-desc">Contrôle direct des protocoles de sécurité du serveur.</div>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+      {% if lockdown_active %}
+        <button class="btn btn-secondary btn-sm" onclick="toggleLockdown({{ guild_id }}, false)">
+          Lever le verrouillage
+        </button>
+      {% else %}
+        <button class="btn btn-danger btn-sm" onclick="toggleLockdown({{ guild_id }}, true)">
+          Verrouiller le serveur (Lockdown)
+        </button>
+      {% endif %}
+
+      <button class="btn btn-secondary btn-sm" onclick="toggleDryRun({{ guild_id }}, {{ 'false' if dry_run else 'true' }})">
+        {% if dry_run %}
+          Activer sanctions réelles
+        {% else %}
+          Passer en mode simulation (Dry-Run)
+        {% endif %}
+      </button>
+
+      <a href="/api/guild/{{ guild_id }}/report.pdf" target="_blank" class="btn btn-secondary btn-sm">
+        Télécharger rapport PDF
+      </a>
+    </div>
+  </div>
+
+  <!-- Activité 24h -->
+  <div class="grid" style="grid-template-columns: repeat(3, 1fr); gap: 12px;">
+    <div class="stat">
+      <div class="lbl">Incidents (24h)</div>
+      <div class="val" style="margin-top: 6px;">
+        {{ incidents_today }}
+      </div>
+      <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">Attaques bloquées</div>
+    </div>
+
+    <div class="stat">
+      <div class="lbl">Score Risque Moyen</div>
+      <div class="val" style="margin-top: 6px;">
+        {{ avg_score if avg_score is not none else '0.00' }}
+      </div>
+      <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">Évaluation arrivants récents</div>
+    </div>
+
+    <div class="stat">
+      <div class="lbl">En Quarantaine</div>
+      <div class="val" style="margin-top: 6px;">
+        {{ quarantine_count }}
+      </div>
+      <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">Membres isolés</div>
+    </div>
+  </div>
+
+  <!-- 🛰️ Terminal Live SOC Matrix (Centre des Opérations de Sécurité) -->
+  <div class="card" style="margin-top: 16px; border-color: rgba(88, 101, 242, 0.3); background: #0b0c10;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.06);">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #00ff88; box-shadow: 0 0 10px #00ff88; animation: pulse 2s infinite;"></span>
+        <span style="font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em; color: var(--text-main); text-transform: uppercase;">
+          LIVE SOC MATRIX &bull; FLUX DE DÉFENSE EN TEMPS RÉEL
+        </span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <div style="display: flex; background: rgba(255, 255, 255, 0.04); border-radius: var(--radius); padding: 2px;">
+          <button class="soc-filter active" onclick="filterSoc('all', this)">Tous</button>
+          <button class="soc-filter" onclick="filterSoc('critical', this)">Critiques</button>
+          <button class="soc-filter" onclick="filterSoc('warning', this)">Alertes</button>
+          <button class="soc-filter" onclick="filterSoc('success', this)">Restauration</button>
+        </div>
+        <button class="btn btn-secondary btn-sm" id="soc-pause-btn" onclick="toggleSocStream()" style="font-size: 11px; padding: 4px 8px;">
+          ⏸ Pause
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="clearSocTerminal()" style="font-size: 11px; padding: 4px 8px;">
+          Effacer
+        </button>
+      </div>
+    </div>
+
+    <!-- Écran Terminal Cyber -->
+    <div id="soc-terminal-logs" style="font-family: var(--font-mono); font-size: 12px; line-height: 1.6; max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 4px 0;">
+      <div style="color: var(--text-dim); font-size: 11px;">[INITIALISATION] Connexion au bus de télémétrie forensique Bidabot...</div>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.04); font-family: var(--font-mono); font-size: 10.5px; color: var(--text-dim);">
+      <div>PROTOCOLE : <span style="color: #00ff88;">ED25519-CHAINED</span> &bull; ZERO TRUST ENGINE</div>
+      <div id="soc-terminal-status">ÉCOUTE ACTIVE &bull; 0/s</div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .soc-filter {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-size: 10.5px;
+    font-family: var(--font-mono);
+    padding: 3px 8px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .soc-filter:hover {
+    color: var(--text-main);
+  }
+  .soc-filter.active {
+    background: var(--accent);
+    color: #fff;
+  }
+  .soc-log-line {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 3px 6px;
+    border-radius: 4px;
+    transition: background 0.2s ease;
+  }
+  .soc-log-line:hover {
+    background: rgba(255, 255, 255, 0.03);
+  }
+  .badge-critical { color: #ff4757; font-weight: 600; }
+  .badge-warning  { color: #ffa502; font-weight: 600; }
+  .badge-info     { color: #70a1ff; font-weight: 600; }
+  .badge-success  { color: #2ed573; font-weight: 600; }
+  @keyframes pulse {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(1.15); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+</style>
+
+<script>
+  let socInterval = null;
+  let socIsPaused = false;
+  let socCurrentFilter = 'all';
+  let socSeenIds = new Set();
+
+  async function toggleLockdown(guildId, active) {
+    const formData = new FormData();
+    formData.append('active', active);
+    const res = await fetch(`/api/guild/${guildId}/lockdown`, { method: 'POST', body: formData });
+    if (res.ok) {
+      showToast(active ? "Lockdown activé." : "Lockdown désactivé.");
+      htmx.ajax('GET', `/dashboard/${guildId}/tab/overview`, { target: '#tab-content', swap: 'innerHTML' });
+    }
+  }
+
+  async function toggleDryRun(guildId, dryRun) {
+    const formData = new FormData();
+    formData.append('dry_run', dryRun);
+    const res = await fetch(`/api/guild/${guildId}/dryrun`, { method: 'POST', body: formData });
+    if (res.ok) {
+      showToast(dryRun ? "Mode simulation activé." : "Sanctions réelles activées.");
+      htmx.ajax('GET', `/dashboard/${guildId}/tab/overview`, { target: '#tab-content', swap: 'innerHTML' });
+    }
+  }
+
+  function filterSoc(level, btn) {
+    socCurrentFilter = level;
+    document.querySelectorAll('.soc-filter').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    
+    document.querySelectorAll('.soc-log-line').forEach(line => {
+      const lineLevel = line.getAttribute('data-level');
+      if (socCurrentFilter === 'all' || lineLevel === socCurrentFilter) {
+        line.style.display = 'flex';
+      } else {
+        line.style.display = 'none';
+      }
+    });
+  }
+
+  function toggleSocStream() {
+    socIsPaused = !socIsPaused;
+    const btn = document.getElementById('soc-pause-btn');
+    const status = document.getElementById('soc-terminal-status');
+    if (socIsPaused) {
+      btn.textContent = '▶ Reprendre';
+      btn.classList.add('btn-primary');
+      btn.classList.remove('btn-secondary');
+      if (status) status.textContent = 'PAUSE &bull; EN ATTENTE';
+    } else {
+      btn.textContent = '⏸ Pause';
+      btn.classList.remove('btn-primary');
+      btn.classList.add('btn-secondary');
+      if (status) status.textContent = 'ÉCOUTE ACTIVE &bull; SYNCHRONISÉ';
+    }
+  }
+
+  function clearSocTerminal() {
+    const logs = document.getElementById('soc-terminal-logs');
+    if (logs) {
+      logs.innerHTML = '<div style="color: var(--text-dim); font-size: 11px;">[CONSOLE VIDE] En attente de nouvelles alertes forensiques...</div>';
+    }
+    socSeenIds.clear();
+  }
+
+  async function pollSocEvents(guildId) {
+    if (socIsPaused) return;
+    try {
+      const res = await fetch(`/api/guild/${guildId}/soc-events`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const events = data.events || [];
+      const logs = document.getElementById('soc-terminal-logs');
+      if (!logs) return;
+
+      let added = 0;
+      events.reverse().forEach(ev => {
+        if (!socSeenIds.has(ev.id)) {
+          socSeenIds.add(ev.id);
+          added++;
+          const line = document.createElement('div');
+          line.className = 'soc-log-line';
+          line.setAttribute('data-level', ev.level);
+          if (socCurrentFilter !== 'all' && ev.level !== socCurrentFilter) {
+            line.style.display = 'none';
+          }
+
+          let actionButtons = '';
+          if (ev.user_id) {
+            actionButtons = `
+              <span style="display: inline-flex; gap: 4px; margin-left: 6px; align-items: center;">
+                <button onclick="socQuickBan({{ guild_id }}, '${ev.user_id}')" class="btn btn-danger btn-sm" style="padding: 1px 6px; font-size: 10px; line-height: 1.4;" title="Bannir ce compte de Discord">🔨 Ban</button>
+                <button onclick="socQuickTimeout({{ guild_id }}, '${ev.user_id}')" class="btn btn-secondary btn-sm" style="padding: 1px 6px; font-size: 10px; line-height: 1.4;" title="Timeout 10 min">⏳ Mute</button>
+                <button onclick="socQuickQuarantine({{ guild_id }}, '${ev.user_id}')" class="btn btn-secondary btn-sm" style="padding: 1px 6px; font-size: 10px; line-height: 1.4;" title="Mettre en quarantaine">☣️</button>
+              </span>
+            `;
+          }
+
+          line.innerHTML = `
+            <span style="color: var(--text-dim);">${ev.time}</span>
+            <span class="badge-${ev.level}">${ev.badge}</span>
+            <span style="color: var(--text-main); flex: 1;">${ev.message}</span>
+            ${actionButtons}
+            <span style="color: var(--text-dim); font-size: 10.5px; opacity: 0.6; margin-left: 6px;" title="Hash de preuve Ed25519">${ev.hash}</span>
+          `;
+          logs.appendChild(line);
+        }
+      });
+
+      if (added > 0) {
+        logs.scrollTop = logs.scrollHeight;
+        const status = document.getElementById('soc-terminal-status');
+        if (status) status.textContent = `ÉCOUTE ACTIVE &bull; ${events.length} ÉVÉNEMENTS`;
+      }
+    } catch (e) {
+      // Ignoré lors des navigations
+    }
+  }
+
+  async function socQuickBan(guildId, userId) {
+    if (!confirm(`🔨 Confirmer le bannissement immédiat du compte ${userId} ?`)) return;
+    const formData = new FormData();
+    formData.append('reason', 'Sanction immédiate Live SOC — Détecté par Bidabot');
+    formData.append('delete_days', '1');
+    const res = await fetch(`/api/guild/${guildId}/ban/${userId}`, { method: 'POST', body: formData });
+    if (res.ok) {
+      if (typeof showToast === 'function') showToast(`🔨 Membre ${userId} banni.`);
+    }
+  }
+
+  async function socQuickTimeout(guildId, userId) {
+    const formData = new FormData();
+    formData.append('duration', '600');
+    formData.append('reason', 'Mise sous silence Live SOC');
+    const res = await fetch(`/api/guild/${guildId}/timeout/${userId}`, { method: 'POST', body: formData });
+    if (res.ok) {
+      if (typeof showToast === 'function') showToast(`⏳ Timeout 10m appliqué à ${userId}.`);
+    }
+  }
+
+  async function socQuickQuarantine(guildId, userId) {
+    const res = await fetch(`/api/guild/${guildId}/quarantine/${userId}`, { method: 'POST' });
+    if (res.ok) {
+      if (typeof showToast === 'function') showToast(`☣️ Membre ${userId} mis en quarantaine.`);
+    }
+  }
+
+  // Démarrage automatique de l'écoute SOC
+  (function initSoc() {
+    if (window._socTimer) clearInterval(window._socTimer);
+    clearSocTerminal();
+    pollSocEvents({{ guild_id }});
+    window._socTimer = setInterval(() => pollSocEvents({{ guild_id }}), 3500);
+  })();
+</script>

@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BIDABOT — Sécurité Discord & Forensique</title>
+  <meta name="description" content="Plateforme SaaS de sécurité pour Discord. Anti-nuke, war rooms, analyse vectorielle et chaîne forensique signée Ed25519.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css?v=20261001_mono_v4">
+  <style>
+    /* Monochrome Sombre Absolu — Annulation stricte de tout cache */
+    html, body {
+      background-color: #000000 !important;
+      background-image: none !important;
+      color: #ffffff !important;
+    }
+    .brand-name {
+      background: none !important;
+      -webkit-text-fill-color: #ffffff !important;
+      color: #ffffff !important;
+    }
+    .btn-primary {
+      background: #ffffff !important;
+      color: #000000 !important;
+      box-shadow: none !important;
+      border: 1px solid #ffffff !important;
+      border-radius: 4px !important;
+    }
+    .btn-primary:hover {
+      background: #d4d4d8 !important;
+      color: #000000 !important;
+    }
+    .btn-secondary {
+      background: #000000 !important;
+      color: #ffffff !important;
+      box-shadow: none !important;
+      border: 1px solid #222225 !important;
+      border-radius: 4px !important;
+    }
+    .btn-secondary:hover {
+      background: #141414 !important;
+      border-color: #333333 !important;
+    }
+    * {
+      box-shadow: none !important;
+      text-shadow: none !important;
+    }
+    .hero-saas {
+      padding: 64px 0 48px;
+      border-bottom: 1px solid var(--border);
+    }
+    .hero-tag {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 16px;
+    }
+    .hero-h1 {
+      font-size: clamp(32px, 4vw, 48px);
+      font-weight: 600;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      color: var(--text-main);
+      max-width: 860px;
+      margin-bottom: 16px;
+    }
+    .hero-p {
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--text-muted);
+      max-width: 680px;
+      margin-bottom: 28px;
+    }
+    .hero-btn-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 48px;
+    }
+    .specs-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .spec-item {
+      background: var(--surface);
+      padding: 16px 20px;
+    }
+    .spec-num {
+      font-family: var(--font-mono);
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-bottom: 2px;
+    }
+    .spec-lbl {
+      font-size: 11.5px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    /* Sections */
+    .section-wrap {
+      padding: 56px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+    .section-heading {
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 24px;
+    }
+
+    /* Features Grid (Linear Style) */
+    .features-matrix {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .matrix-cell {
+      background: var(--surface);
+      padding: 24px 20px;
+    }
+    .matrix-title {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-bottom: 8px;
+    }
+    .matrix-text {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Commands Table */
+    .cmd-toolbar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .cmd-search-input {
+      flex: 1;
+      min-width: 240px;
+      padding: 8px 12px;
+      background: #000000;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      outline: none;
+    }
+    .cmd-search-input:focus {
+      border-color: var(--border-focus);
+    }
+    .cat-btn-group {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .cat-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-family: var(--font-sans);
+    }
+    .cat-btn:hover {
+      color: var(--text-main);
+      border-color: #38383e;
+    }
+    .cat-btn.active {
+      background: #ffffff;
+      color: #000000;
+      border-color: #ffffff;
+      font-weight: 500;
+    }
+
+    .cmd-table-container {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .cmd-row {
+      display: grid;
+      grid-template-columns: 240px 1fr 100px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      align-items: baseline;
+      gap: 16px;
+    }
+    .cmd-row:last-child {
+      border-bottom: none;
+    }
+    .cmd-row:hover {
+      background-color: var(--surface-hover);
+    }
+    .cmd-name-link {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-main);
+      cursor: pointer;
+    }
+    .cmd-name-link:hover {
+      text-decoration: underline;
+    }
+    .cmd-desc-text {
+      font-size: 12.5px;
+      color: var(--text-muted);
+    }
+    .cmd-syntax-sub {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 3px;
+    }
+    .cmd-role-badge {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--text-dim);
+      text-align: right;
+    }
+
+    /* Sandbox */
+    .sandbox-wrap {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      padding: 20px;
+      max-width: 800px;
+    }
+    .sandbox-textarea {
+      width: 100%;
+      height: 75px;
+      padding: 10px;
+      background: #000000;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      color: var(--text-main);
+      outline: none;
+      resize: vertical;
+      margin-bottom: 12px;
+    }
+    .sandbox-textarea:focus {
+      border-color: var(--border-focus);
+    }
+
+    @media (max-width: 860px) {
+      .features-matrix { grid-template-columns: 1fr; }
+      .specs-grid { grid-template-columns: repeat(2, 1fr); }
+      .cmd-row { grid-template-columns: 1fr; gap: 6px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation Minimale -->
+  <nav class="navbar">
+    <div style="display: flex; align-items: center; gap: 24px;">
+      <a href="/" class="nav-brand">
+        <span class="brand-name">BIDABOT</span>
+        <span class="brand-tag">SECURITY / ED25519</span>
+      </a>
+      <div class="nav-links">
+        <a href="#features" class="nav-link">Architecture</a>
+        <a href="#commands" class="nav-link">Commandes</a>
+        <a href="#scanner" class="nav-link">Simulateur</a>
+        <a href="/dashboard" class="nav-link">Serveurs</a>
+      </div>
+    </div>
+
+    <div class="nav-actions">
+      <a href="/login" class="btn btn-secondary btn-sm">Accès Staff</a>
+      <a href="https://discord.com/api/oauth2/authorize?client_id={{ client_id }}&permissions=8&scope=bot%20applications.commands" target="_blank" class="btn btn-primary btn-sm">
+        Ajouter à Discord
+      </a>
+    </div>
+  </nav>
+
+  <!-- Hero Section (Radical Minimalist) -->
+  <header class="hero-saas">
+    <div class="container">
+      <div class="hero-tag">PLATEFORME SAAS DE CYBERDÉFENSE DISCORD</div>
+      <h1 class="hero-h1">Protection anti-nuke, war rooms et preuves cryptographiques.</h1>
+      <p class="hero-p">
+        Bidabot neutralise les attaques coordonnées et les comptes staff compromis en moins de 10 secondes. Chaque incident est scellé dans une chaîne de blocs immuable signée par clé Ed25519.
+      </p>
+
+      <div class="hero-btn-row">
+        <a href="https://discord.com/api/oauth2/authorize?client_id={{ client_id }}&permissions=8&scope=bot%20applications.commands" target="_blank" class="btn btn-primary">
+          Déployer sur Discord
+        </a>
+        <a href="/login" class="btn btn-secondary">
+          Console Staff
+        </a>
+        <a href="#commands" class="btn btn-secondary">
+          Index des 28 commandes
+        </a>
+      </div>
+
+      <!-- Spécifications Clés -->
+      <div class="specs-grid">
+        <div class="spec-item">
+          <div class="spec-num">21</div>
+          <div class="spec-lbl">Modules de défense</div>
+        </div>
+        <div class="spec-item">
+          <div class="spec-num">&lt; 10s</div>
+          <div class="spec-lbl">Temps de réaction anti-nuke</div>
+        </div>
+        <div class="spec-item">
+          <div class="spec-num">Ed25519</div>
+          <div class="spec-lbl">Signature cryptographique</div>
+        </div>
+        <div class="spec-item">
+          <div class="spec-num">pgvector</div>
+          <div class="spec-lbl">Vecteurs non-réversibles</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Section Architecture & Capacités -->
+  <section class="section-wrap" id="features">
+    <div class="container">
+      <div class="section-label">FONCTIONNALITÉS FONDAMENTALES</div>
+      <h2 class="section-heading">Architecture modulaire & réactivité temps réel</h2>
+
+      <div class="features-matrix">
+        <div class="matrix-cell">
+          <div class="matrix-title">Anti-Nuke & Rogue Admin</div>
+          <p class="matrix-text">
+            Détecte les rafales de suppression ou création de salons/rôles par un compte modérateur piraté. Révocation des privilèges en 10 secondes et rétablissement de l'arborescence.
+          </p>
+        </div>
+
+        <div class="matrix-cell">
+          <div class="matrix-title">War Rooms Automatisées</div>
+          <p class="matrix-text">
+            Déploie en une seconde un salon de crise sécurisé invisible pour le public. Contient le dossier d'enquête complet, les preuves et les boutons de sanction rapide.
+          </p>
+        </div>
+
+        <div class="matrix-cell">
+          <div class="matrix-title">Stylométrie Vectorielle (pgvector)</div>
+          <p class="matrix-text">
+            Stocke des coordonnées géométriques (16D et 64D) pour associer les multi-comptes et doppelgängers d'un membre banni, même sous VPN ou adresse IP variable.
+          </p>
+        </div>
+
+        <div class="matrix-cell">
+          <div class="matrix-title">Canaries & Honeytokens</div>
+          <p class="matrix-text">
+            Salons et balises invisibles pour les membres légitimes. Tout bot de raid ou script d'attaque qui tente d'y interagir déclenche une alarme immédiate et l'isolement du profil.
+          </p>
+        </div>
+
+        <div class="matrix-cell">
+          <div class="matrix-title">Anti-Stresseur Vocal</div>
+          <p class="matrix-text">
+            Sonde la latence RTC des salons vocaux. En cas de saturation UDP ou d'attaque, clone instantanément le salon et migre l'ensemble des membres sans coupure audio.
+          </p>
+        </div>
+
+        <div class="matrix-cell">
+          <div class="matrix-title">Chaîne Forensique Signée (PDF)</div>
+          <p class="matrix-text">
+            Chaque événement est lié par hash SHA-256 successif et signé par clé privée Ed25519. Permet de générer des certificats d'audit juridiquement vérifiables.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section Index des Commandes -->
+  <section class="section-wrap" id="commands">
+    <div class="container">
+      <div class="section-label">RÉPERTOIRE TECHNIQUE</div>
+      <h2 class="section-heading">Index des commandes slash</h2>
+
+      <div class="cmd-toolbar">
+        <input type="text" id="cmd-search" class="cmd-search-input" placeholder="Filtrer les commandes (ex: voice, lockdown, setup, report)...">
+        
+        <div class="cat-btn-group">
+          <button class="cat-btn active" data-cat="all">Toutes</button>
+          <button class="cat-btn" data-cat="voice">Vocal</button>
+          <button class="cat-btn" data-cat="crisis">Crise</button>
+          <button class="cat-btn" data-cat="backup">Sauvegarde</button>
+          <button class="cat-btn" data-cat="setup">Setup</button>
+          <button class="cat-btn" data-cat="forensic">Forensique</button>
+          <button class="cat-btn" data-cat="channels">Structure</button>
+          <button class="cat-btn" data-cat="federation">Fédération</button>
+        </div>
+      </div>
+
+      <div class="cmd-table-container">
+
+        <div class="command-card cmd-row" data-category="voice" data-name="/bidabot voice renew" data-desc="Recréer un salon vocal avec mêmes permissions et déplacer tous les membres">
+          <div>
+            <span class="cmd-name-link" onclick="copyCommand('/bidabot voice renew', this)">/bidabot voice renew</span>
+          </div>
+          <div>
+            <div class="cmd-desc-text">Recrée à l'identique un salon vocal sous attaque de stresseur et transfère les membres connectés sans rupture audio.</div>
+            <div class="cmd-syntax-sub">Options : [channel] [region: rotterdam, frankfurt...]</div>
+          </div>
+          <div style="text-align: right;">
+            <span class="cmd-role-badge">Admin</span>
+          </div>
+        </div>
+
+        <div class="command-card cmd-row" data-category="voice" data-name="/bidabot voice ping" data-desc="Mesurer le ping WebRTC et la santé de la passerelle vocale">
+          <div>
+            <span class="cmd-name-link" onclick="copyCommand('/bidabot voice ping', this)">/bidabot voice ping</span>
+          </div>
+          <div>
+            <div class="cmd-desc-text">Sonde la passerelle vocale WebRTC pour identifier les paquets perdus et les pics de gigue anormaux.</div>
+            <div class="cmd-syntax-sub">Options : [channel]</div>
+          </div>
+          <div style="text-align: right;">
+            <span class="cmd-role-badge">Staff</span>
+          </div>
+        </div>
+
+        <div class="command-card cmd-row" data-category="voice" data-name="/bidabot voice autoprotect" data-desc="Activer l'auto-réparation automatique en cas de pic de ping">
+          <div>
+            <span class="cmd-name-link" onclick="copyCommand('/bidabot voice autoprotect', this)">/bidabot voice autoprotect</span>
+          </div>
+          <div>
+            <div class="cmd-desc-text">Active la surveillance automatisée. Déclenche la migration du canal si le ping dépasse le seuil configuré.</div>
+            <div class="cmd-syntax-sub">Syntaxe : /bidabot voice autoprotect &lt;channel&gt; [enable: true|false] [max_ping: 250]</div>
+          </div>
+          <div style="text-align: right;">
+            <span class="cmd-role-badge">Admin</span>
+          </div>
+        </div>
+
+        <div class="command-card cmd-row" data-category="crisis" data-name="/bidabot lockdown" data-desc="Verrouiller ou déverrouiller le serveur en urgence">
+          <div>
+            <span class="cmd-name-link" onclick="copyCommand('/bidabot lockdown', this)">/bidabot lockdown</span>
+          </div>
+          <div>
+            <div class="cmd-desc-text">Verrouille immédiatement l'écriture sur l'ensemble des salons publics et impose un slowmode de sécurité.</div>
+            <div class="cmd-syntax-sub">Syntaxe : /bidabot lockdown &lt;action: on|off&gt;</div>
+          </div>
+          <div style="text-align: right;">
+            <span class="cmd-role-badge">Admin</span>
+          </div>
+        </div>
+
+        <div class="command-card cmd-row" data-category="backup" data-name="/bidabot backup create" data-desc="Capturer un snapshot d'urgence de la structure complète du serveur">
+          <div>
+            <span class="cmd-name-link" onclick="copyCommand('/bidabot backup create', this)">/bidabot backup create</span>
+          </div>
+          <div>
+            <div class="cmd-desc-text">Capture instantanément tous les salons textuels, vocaux, catégories, hiérarchie de rôles et permissions.</div>
+            <div class="cmd-syntax-sub">Options : [label: "Avant-Event", "Routine"...]</div>
+          </div>
+          <div style="text-align: right;">
+            <span class="cmd-role-badge">Admin</span>
+          </div>
+        </div>
+
+        <div class="command-card cmd-row" data-category="backup" data-name="/bidabot backup restore" data-desc="Restauration chirurgicale 1-clic après un raid ou un nuke">
+          <div>
+            <span class="cmd-name-link" onclick="copyCommand('/bidabot backup restore', this)">/bidabot backup restore</span>
+          </div>
+          <div>
+            <div class="cmd-desc-text">Rétablit les salons et rôles supprimés sans impacter les éléments existants. Reconstruction anti-nuke absolue.</div>
+            <div class="cmd-syntax-sub">Syntaxe : /bidabot backup restore &lt;snapshot_id&gt;</div>
+          </div>
+          <div style="text-align: right;">
+            <span class="cmd-role-badge">Admin</span>
+          </div>
+        </div>
+
+        <div class="command-card cmd-row" data-category="backup" data-name="/bidabot backup list" data-desc="Consulter l'historique des snapshots disponibles pour restauration">
+          <div>
+            <span class="cmd-name-link" onclick="copyCommand('/bidabot backup list', this)">/bidabot backup list</span>
+          </div>
+          <div>
+            <div class="cmd-desc-text">Affiche la liste des 10 dernières sauvegardes enregistrées avec leurs identifiants et statistiques.</div>
+            <div class="cmd-syntax-sub">Arguments : Aucun</div>
+          </div>
+          <div style="text-align: right;">
+            <span class="cmd-role-badge">Admin</span>
+          </div>
+        </div>
+
+
+        <div class="command-card cmd-row" data-category="setup" data-name="/bidabot setup" data-desc="Configuration automatique de tous les salons et rôles du bot">
+          <div>
+            <span class="cmd-name-link" onclick="copyCommand('/bidabot setup', this)">/bidabot setup</span>
+          </div>
+          <div>
+            <div class="cmd-desc-text">Déploie l'ensemble des salons de sécurité : alertes, quarantaine, canaux pièges et war rooms.</div>
+            <div class="cmd-syntax-sub">Options : [role] [role2] [role3]</div>
+          </div>
+          <div style="text-align: right;">
+            <span class="cmd-role-badge">Admin</span>
+          </div>
+        </div>
+
+        <div class="command-card cmd-row" data-category="setup" data-name="/bidabot dry-run" data-desc="Basculer entre mode simulation et mode sanctions réelles">
+          <div>
+            <span class="cmd-name-link" onclick="copyCommand('/bidabot dry-run', this)">/bidabot dry-run</span>
+          </div>
+          <div>
+            <div class="cmd-desc-text">Bascule entre le mode simulation (alertes sans modifications de droits) et les sanctions réelles actives.</div>
+            <div class="cmd-syntax-sub">Syntaxe : /bidabot dry-run &lt;mode: on|off&gt;</div>
+          </div>
+          <div style="text-align: right;">
+            <span class="cmd-role-badge">Admin</span>
+          </div>
+        </div>
+
+        <div class="command-card cmd-row" data-category="forensic" data-name="/bidabot report" data-desc="Générer le rapport forensique certifié en PDF">
+          <div>
+            <span class="cmd-name-link" onclick="copyCommand('/bidabot report', this)">/bidabot report</span>
+          </div>
+          <div>
+            <div class="cmd-desc-text">Exporte un document PDF signé Ed25519 contenant l'historique complet et les hashes SHA-256 des événements.</div>
+            <div class="cmd-syntax-sub">Arguments : Aucun</div>
+          </div>
+          <div style="text-align: right;">
+            <span class="cmd-role-badge">Staff</span>
+          </div>
+        </div>
+
+        <div class="command-card cmd-row" data-category="forensic" data-name="/bidabot verify" data-desc="Vérifier l'intégrité de la chaîne de preuves cryptographiques">
+          <div>
+            <span class="cmd-name-link" onclick="copyCommand('/bidabot verify', this)">/bidabot verify</span>
+          </div>
+          <div>
+            <div class="cmd-desc-text">Vérifie l'intégrité mathématique de la chaîne de hash pour certifier qu'aucune entrée n'a été corrompue.</div>
+            <div class="cmd-syntax-sub">Arguments : Aucun</div>
+          </div>
+          <div style="text-align: right;">
+            <span class="cmd-role-badge">Staff</span>
+          </div>
+        </div>
+
+        <div class="command-card cmd-row" data-category="forensic" data-name="/bidabot whois" data-desc="Fiche d'enquête complète sur un compte">
+          <div>
+            <span class="cmd-name-link" onclick="copyCommand('/bidabot whois', this)">/bidabot whois</span>
+          </div>
+          <div>
+            <div class="cmd-desc-text">Extrait l'ancienneté du compte, le score de risque heuristique et l'historique d'infractions.</div>
+            <div class="cmd-syntax-sub">Arguments : &lt;user: Membre&gt;</div>
+          </div>
+          <div style="text-align: right;">
+            <span class="cmd-role-badge">Staff</span>
+          </div>
+        </div>
+
+        <div class="command-card cmd-row" data-category="forensic" data-name="/bidabot similar" data-desc="Identifier les multi-comptes et doppelgängers">
+          <div>
+            <span class="cmd-name-link" onclick="copyCommand('/bidabot similar', this)">/bidabot similar</span>
+          </div>
+          <div>
+            <div class="cmd-desc-text">Recherche par similarité cosinus dans pgvector pour identifier les comptes jumeaux ou de contournement.</div>
+            <div class="cmd-syntax-sub">Arguments : &lt;user: Membre&gt;</div>
+          </div>
+          <div style="text-align: right;">
+            <span class="cmd-role-badge">Staff</span>
+          </div>
+        </div>
+
+        <div class="command-card cmd-row" data-category="crisis" data-name="/bidabot ban" data-desc="Bannir un compte avec signature de preuve forensique">
+          <div>
+            <span class="cmd-name-link" onclick="copyCommand('/bidabot ban', this)">/bidabot ban</span>
+          </div>
+          <div>
+            <div class="cmd-desc-text">Bannit l'auteur d'un raid, capture ses empreintes comportementales et scelle l'action dans le journal.</div>
+            <div class="cmd-syntax-sub">Arguments : &lt;user: Membre&gt; [reason: Raison]</div>
+          </div>
+          <div style="text-align: right;">
+            <span class="cmd-role-badge">Admin</span>
+          </div>
+        </div>
+
+        <div class="command-card cmd-row" data-category="federation" data-name="/bidabot federation" data-desc="Interroger et enrichir le réseau de réputation inter-serveurs">
+          <div>
+            <span class="cmd-name-link" onclick="copyCommand('/bidabot federation', this)">/bidabot federation</span>
+          </div>
+          <div>
+            <div class="cmd-desc-text">Interroge le réseau inter-serveurs de façon anonymisée (HMAC-SHA256) pour vérifier la réputation d'un identifiant.</div>
+            <div class="cmd-syntax-sub">Sous-commandes : check, report</div>
+          </div>
+          <div style="text-align: right;">
+            <span class="cmd-role-badge">Admin</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Section Simulateur Heuristique -->
+  <section class="section-wrap" id="scanner">
+    <div class="container">
+      <div class="section-label">AUDIT INSTANTANÉ</div>
+      <h2 class="section-heading">Simulateur de détection heuristique</h2>
+
+      <div class="sandbox-wrap">
+        <textarea id="scan-text-input" class="sandbox-textarea" placeholder="Entrez un échantillon (lien Nitro frauduleux, proposition Steam, tentative d'intimidation...)..."></textarea>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+          <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);">
+            ANALYSE LOCALE / SANS ENVOI DISCORD
+          </span>
+          <button id="run-scan-btn" class="btn btn-primary btn-sm">
+            Analyser l'échantillon
+          </button>
+        </div>
+
+        <div id="scan-results-box" style="margin-top: 14px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius); background: #000; display: none; font-size: 12.5px;"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer Simple -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div>
+        <span style="font-weight: 600; color: var(--text-main);">BIDABOT</span>
+        <span style="margin: 0 8px; color: var(--border);">&bull;</span>
+        <span>Système de défense et chaîne forensique immuable pour Discord</span>
+      </div>
+      <div class="footer-links">
+        <a href="#commands">Commandes</a>
+        <a href="/dashboard">Console</a>
+        <a href="/login">Accès Staff</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

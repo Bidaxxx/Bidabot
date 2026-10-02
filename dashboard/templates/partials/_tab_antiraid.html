@@ -1,0 +1,224 @@
+<div class="antiraid-section">
+  <!-- 🔨 Nettoyeur de Raid & Mass-Ban 1-Clic -->
+  <div class="card" style="margin-bottom: 16px; border-color: rgba(255, 71, 87, 0.4); background: linear-gradient(180deg, rgba(255, 71, 87, 0.06) 0%, rgba(18, 18, 20, 0.4) 100%);">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+      <div>
+        <div class="card-title" style="color: #ff4757; display: flex; align-items: center; gap: 8px;">
+          <span>🔨</span> Nettoyeur de Raid & Mass-Ban 1-Clic
+        </div>
+        <div class="card-desc" style="max-width: 650px;">
+          En cas d'attaque par vague de tokens ou self-bots, Bidabot analyse les arrivées récentes, bannit instantanément tous les comptes suspects, supprime l'ensemble de leurs messages des dernières 24h et révoque le lien d'invitation compromis.
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <select id="raid-window-select" class="form-input" style="padding: 7px 12px; font-size: 12px; background: rgba(0,0,0,0.5); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-main);">
+          <option value="15">Arrivées des 15 dernières min</option>
+          <option value="30">Arrivées des 30 dernières min</option>
+          <option value="45" selected>Arrivées des 45 dernières min (Défaut)</option>
+          <option value="60">Arrivées de la dernière heure</option>
+          <option value="120">Arrivées des 2 dernières heures</option>
+        </select>
+        <button class="btn btn-danger btn-sm" onclick="triggerRaidPurge({{ guild_id }})" style="font-weight: 600; padding: 7px 14px;">
+          🔨 Purger le Raid en 1 Clic
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Module de Verrouillage & Simulation -->
+  <div class="card" style="margin-bottom: 16px;">
+    <div class="card-title">Verrouillage d'Urgence & Mode d'Action</div>
+    <div class="card-desc">
+      Le lockdown suspend l'écriture sur tous les canaux publics tout en maintenant la pleine opérabilité des salons de modération.
+    </div>
+
+    <div class="settings-list">
+      <div class="setting-item">
+        <div>
+          <div class="setting-title">Lockdown d'Urgence</div>
+          <div class="setting-desc">Verrouille immédiatement tous les canaux publics du serveur.</div>
+        </div>
+        <div>
+          <label class="switch">
+            <input type="checkbox" id="lockdown-toggle" {% if lockdown_active %}checked{% endif %}
+                   onchange="toggleLockdown({{ guild_id }}, this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div>
+          <div class="setting-title">Mode Simulation (Dry-Run)</div>
+          <div class="setting-desc">Analyse, alerte et ouvre les War Rooms sans appliquer de sanctions réelles.</div>
+        </div>
+        <div>
+          <label class="switch">
+            <input type="checkbox" id="dryrun-toggle" {% if dry_run %}checked{% endif %}
+                   onchange="toggleDryRun({{ guild_id }}, this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🚪 Smart Gatekeeper (Sas d'Entrée Dynamique) -->
+  <div class="card" style="margin-bottom: 16px; border-color: rgba(88, 101, 242, 0.4); background: linear-gradient(180deg, rgba(88, 101, 242, 0.05) 0%, rgba(18, 18, 20, 0.4) 100%);">
+    <div class="card-title" style="color: #5865F2; display: flex; align-items: center; gap: 8px;">
+      <span>🚪</span> Smart Gatekeeper (Sas d'Entrée Dynamique)
+    </div>
+    <div class="card-desc">
+      Protocole d'onboarding intelligent basé sur l'IA et le score de risque :
+      <strong>Score &lt; 30%</strong> = passage direct et attribution du rôle membre sans friction ; 
+      <strong>30% à 70%</strong> = défi anti-bot interactif dans le sas ; 
+      <strong>&ge; 70%</strong> = mise en quarantaine immédiate.
+    </div>
+
+    <div class="settings-list" style="margin-top: 14px;">
+      <div class="setting-item">
+        <div>
+          <div class="setting-title">Activer le Smart Gatekeeper</div>
+          <div class="setting-desc">Déploie l'onboarding progressif à 3 niveaux pour chaque nouvel arrivant.</div>
+        </div>
+        <div>
+          <label class="switch">
+            <input type="checkbox" name="gatekeeper_enabled" form="antiraid-form" {% if guild.gatekeeper_enabled %}checked{% endif %}>
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div>
+          <div class="setting-title">ID du Rôle Vérifié / Membre</div>
+          <div class="setting-desc">Rôle attribué automatiquement après passage direct ou validation du sas.</div>
+        </div>
+        <div style="width: 220px;">
+          <input type="text" name="gatekeeper_verified_role_id" form="antiraid-form" class="form-input" 
+                 placeholder="Ex: 11029384756..." value="{{ guild.gatekeeper_verified_role_id if guild.gatekeeper_verified_role_id else '' }}" 
+                 style="font-family: var(--font-mono); font-size: 12px;">
+        </div>
+      </div>
+
+      <div class="setting-item">
+        <div>
+          <div class="setting-title">ID du Salon de Sas / Vérification (Optionnel)</div>
+          <div class="setting-desc">Salon public où déployer le bouton de défi anti-bot (si vide, envoyé par message privé).</div>
+        </div>
+        <div style="width: 220px;">
+          <input type="text" name="gatekeeper_channel_id" form="antiraid-form" class="form-input" 
+                 placeholder="Ex: 11029384756..." value="{{ guild.gatekeeper_channel_id if guild.gatekeeper_channel_id else '' }}" 
+                 style="font-family: var(--font-mono); font-size: 12px;">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Seuils et Auto-Quarantaine -->
+  <div class="card">
+    <div class="card-title">Détection & Auto-Quarantaine</div>
+    <div class="card-desc">Ajustez la sensibilité de l'algorithme face aux vagues d'arrivées.</div>
+    <form id="antiraid-form" onsubmit="saveAntiRaidSettings(event, {{ guild_id }})">
+      <input type="hidden" name="section" value="antiraid">
+      <div class="settings-list">
+        <div class="setting-item">
+          <div>
+            <div class="setting-title">Auto-Quarantaine des Profils Douteux</div>
+            <div class="setting-desc">Isole immédiatement tout membre dont le score de risque excède 55%.</div>
+          </div>
+          <div>
+            <label class="switch">
+              <input type="checkbox" name="auto_quarantine_enabled" {% if guild.auto_quarantine_enabled %}checked{% endif %}>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div>
+            <div class="setting-title">Seuil de Vélocité d'Arrivée (Anti-Raid)</div>
+            <div class="setting-desc">Nombre d'arrivées par minute avant déclenchement de l'alerte raid.</div>
+          </div>
+          <div style="width: 120px;">
+            <input type="number" name="join_velocity_threshold" class="form-input" min="2" max="60" 
+                   value="{{ guild.join_velocity_threshold if guild.join_velocity_threshold else 8 }}" style="text-align: right; font-family: var(--font-mono);">
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div>
+            <div class="setting-title">Âge Minimal du Compte Discord</div>
+            <div class="setting-desc">Les comptes créés depuis moins de X jours sont soumis à surveillance.</div>
+          </div>
+          <div style="width: 120px;">
+            <input type="number" name="account_age_min_days" class="form-input" min="0" max="90" 
+                   value="{{ guild.account_age_min_days if guild.account_age_min_days else 3 }}" style="text-align: right; font-family: var(--font-mono);">
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px; text-align: right;">
+        <button type="submit" class="btn btn-primary btn-sm">
+          Enregistrer les paramètres
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  async function saveAntiRaidSettings(e, guildId) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    
+    if (!formData.has('auto_quarantine_enabled')) {
+      formData.append('auto_quarantine_enabled', 'false');
+    } else {
+      formData.set('auto_quarantine_enabled', 'true');
+    }
+
+    if (!formData.has('gatekeeper_enabled')) {
+      formData.append('gatekeeper_enabled', 'false');
+    } else {
+      formData.set('gatekeeper_enabled', 'true');
+    }
+
+    const res = await fetch(`/api/guild/${guildId}/settings`, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (res.ok) {
+      showToast("Paramètres anti-raid & Gatekeeper sauvegardés.");
+    } else {
+      showToast("Erreur lors de la sauvegarde.");
+    }
+  }
+
+  async function triggerRaidPurge(guildId) {
+    const windowMins = document.getElementById('raid-window-select').value;
+    if (!confirm(`🚨 DÉCLENCHER LE NETTOYEUR DE RAID D'URGENCE ?\n\n• Cibles : Tous les comptes suspects arrivés dans les ${windowMins} dernières minutes\n• Actions : Mass-ban groupé immédiat + Suppression de leurs messages des dernières 24h + Révocation du lien d'invitation.\n\nConfirmer l'opération ?`)) {
+      return;
+    }
+
+    const fd = new FormData();
+    fd.append('window_minutes', windowMins);
+
+    showToast("Purge de raid en cours d'exécution...");
+    const res = await fetch(`/api/guild/${guildId}/raid-purge`, {
+      method: 'POST',
+      body: fd,
+    });
+
+    if (res.ok) {
+      showToast("Purge de raid envoyée avec succès au Bot !");
+      setTimeout(() => {
+        htmx.ajax('GET', `/dashboard/${guildId}/tab/antiraid`, { target: '#tab-content', swap: 'innerHTML' });
+      }, 1200);
+    } else {
+      showToast("Erreur lors du déclenchement de la purge de raid.");
+    }
+  }
+</script>

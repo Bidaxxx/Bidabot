@@ -1,0 +1,14 @@
+<table>
+    <tr><th>Utilisateur</th><th>Score</th><th>Modèle</th><th>Label</th><th>Horodatage</th></tr>
+    {% for r in rows %}
+    <tr>
+        <td>{{ r.user_id }}</td>
+        <td class="{{ 'bad' if r.score >= 0.8 else ('warn' if r.score >= 0.55 else 'ok') }}">{{ "%.2f"|format(r.score) }}</td>
+        <td>{{ r.model_version }}</td>
+        <td>{{ r.label or "—" }}</td>
+        <td>{{ r.created_at.strftime("%Y-%m-%d %H:%M:%S") }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5">Aucune donnée.</td></tr>
+    {% endfor %}
+</table>

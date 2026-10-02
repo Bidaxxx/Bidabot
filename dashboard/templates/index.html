@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<div id="overview" hx-get="/partials/overview?guild_id={{ guild_id }}" hx-trigger="load, every 5s" hx-swap="innerHTML"></div>
+
+<div class="card">
+    <h2>Scores de légitimité récents (module 3)</h2>
+    <div id="risk-scores" hx-get="/partials/risk-scores?guild_id={{ guild_id }}" hx-trigger="load, every 5s" hx-swap="innerHTML"></div>
+</div>
+
+<div class="card">
+    <h2>Déclenchements canary récents (module 5)</h2>
+    <div id="canary-hits" hx-get="/partials/canary-hits?guild_id={{ guild_id }}" hx-trigger="load, every 5s" hx-swap="innerHTML"></div>
+</div>
+{% endblock %}

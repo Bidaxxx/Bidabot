@@ -1,0 +1,495 @@
+<div class="forensics-section">
+  <!-- En-tête : Intégrité Cryptographique & Rapport PDF -->
+  <div class="card" style="margin-bottom: 16px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+      <div>
+        <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
+          <span>🛡️ Journal des Preuves & Actions de Sécurité</span>
+          <span class="status-pill {% if chain_ok %}status-protected{% else %}status-danger{% endif %}" style="font-size: 10px;">
+            {% if chain_ok %}100% INTÈGRE{% else %}ANOMALIE DE HASH{% endif %}
+          </span>
+        </div>
+        <div class="card-desc">
+          Chaque message suspect, tentative de phishing, compte à risque ou attaque est scellé dans la chaîne cryptographique RFC 8032.
+          Vous pouvez agir immédiatement (Bannir, Expulser, Timeout, Quarantaine) sur n'importe quel événement.
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="htmx.ajax('GET', '/dashboard/{{ guild_id }}/tab/forensics', { target: '#tab-content', swap: 'innerHTML' })">
+          🔄 Actualiser
+        </button>
+        <a href="/api/guild/{{ guild_id }}/report.pdf" target="_blank" class="btn btn-primary btn-sm">
+          📑 Télécharger rapport signé Ed25519
+        </a>
+      </div>
+    </div>
+
+    <!-- Filtres Rapides par Catégorie -->
+    <div style="display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; align-items: center; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 12px;">
+      <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); margin-right: 4px;">FILTRER :</span>
+      <button class="log-filter-btn active" onclick="filterLogs('all', this)">
+        Tous ({{ category_counts.all }})
+      </button>
+      <button class="log-filter-btn" onclick="filterLogs('scam', this)">
+        🎣 Phishing / Scams ({{ category_counts.scam }})
+      </button>
+      <button class="log-filter-btn" onclick="filterLogs('accounts', this)">
+        👤 Comptes Suspects ({{ category_counts.accounts }})
+      </button>
+      <button class="log-filter-btn" onclick="filterLogs('malware', this)">
+        🦠 Malwares & Fichiers ({{ category_counts.malware }})
+      </button>
+      <button class="log-filter-btn" onclick="filterLogs('nuke', this)">
+        💥 Anti-Nuke & Raids ({{ category_counts.nuke }})
+      </button>
+    </div>
+  </div>
+
+  <!-- Registre des Événements & Modération Directe -->
+  <div class="card">
+    <div class="card-title">Événements de Sécurité & Actions Directes</div>
+    <div class="card-desc">Cliquez directement sur l'action de modération souhaitée pour l'exécuter en temps réel sur Discord.</div>
+
+    <div style="overflow-x: auto;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th style="width: 90px;">Heure</th>
+            <th style="width: 140px;">Événement</th>
+            <th style="min-width: 160px;">Membre Suspect</th>
+            <th>Détails & Motifs Détectés</th>
+            <th style="width: 90px; text-align: center;">Score Risque</th>
+            <th style="min-width: 210px; text-align: right;">Actions Modération</th>
+          </tr>
+        </thead>
+        <tbody id="forensics-log-body">
+          {% for ev in incidents %}
+            <tr class="log-row" data-category="{{ ev.category }}" style="border-bottom: 1px solid rgba(255, 255, 255, 0.04);">
+              <!-- Horodatage -->
+              <td style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); white-space: nowrap;">
+                {{ ev.ts.strftime('%d/%m %H:%M') if ev.ts else 'N/A' }}
+              </td>
+
+              <!-- Type d'événement -->
+              <td>
+                <span class="status-pill status-{{ ev.badge_level }}" style="display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; white-space: nowrap;">
+                  <span>{{ ev.icon }}</span>
+                  <span>{{ ev.badge_label }}</span>
+                </span>
+              </td>
+
+              <!-- Membre concerné -->
+              <td>
+                {% if ev.user_id %}
+                  <div style="display: flex; flex-direction: column; gap: 2px;">
+                    <div style="font-weight: 500; color: var(--text-main); font-size: 12.5px;">
+                      {{ ev.username or 'Membre #' ~ ev.user_id }}
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span style="font-family: var(--font-mono); font-size: 10.5px; color: var(--text-dim);">
+                        ID: {{ ev.user_id }}
+                      </span>
+                      <button class="btn-copy-id" onclick="copyToClipboard('{{ ev.user_id }}', 'ID copié !')" title="Copier l'ID Discord">
+                        📋
+                      </button>
+                    </div>
+                  </div>
+                {% else %}
+                  <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);">
+                    Système / Serveur
+                  </span>
+                {% endif %}
+              </td>
+
+              <!-- Détails & Motifs -->
+              <td>
+                <div style="max-width: 380px;">
+                  {% if ev.snippet %}
+                    <div style="font-family: var(--font-mono); font-size: 11.5px; color: #e1e7ff; background: rgba(0, 0, 0, 0.35); padding: 4px 8px; border-radius: 4px; margin-bottom: 4px; word-break: break-word; max-height: 48px; overflow-y: auto;">
+                      {{ ev.snippet }}
+                    </div>
+                  {% endif %}
+                  {% if ev.reasons %}
+                    <div style="font-size: 11px; color: var(--text-muted); display: flex; flex-direction: column; gap: 2px;">
+                      {% for r in ev.reasons[:2] %}
+                        <div style="display: flex; align-items: baseline; gap: 4px;">
+                          <span style="color: #ff6b81;">•</span>
+                          <span>{{ r }}</span>
+                        </div>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                </div>
+              </td>
+
+              <!-- Score Risque -->
+              <td style="text-align: center;">
+                {% if ev.score is not none %}
+                  <div style="display: inline-flex; flex-direction: column; align-items: center;">
+                    <span style="font-family: var(--font-mono); font-weight: 700; font-size: 12px; {% if ev.score >= 0.80 %}color: #ff4757;{% elif ev.score >= 0.50 %}color: #ffa502;{% else %}color: #2ed573;{% endif %}">
+                      {{ ev.score_pct }}%
+                    </span>
+                    <span style="font-size: 9.5px; color: var(--text-dim); text-transform: uppercase;">
+                      {% if ev.score >= 0.80 %}Critique{% elif ev.score >= 0.50 %}Suspect{% else %}Modéré{% endif %}
+                    </span>
+                  </div>
+                {% else %}
+                  <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);">-</span>
+                {% endif %}
+              </td>
+
+              <!-- Actions Directes 1 Clic -->
+              <td style="text-align: right; white-space: nowrap;">
+                {% if ev.user_id %}
+                  <div style="display: inline-flex; gap: 4px; align-items: center;">
+                    <!-- Bouton Bannir -->
+                    <button class="btn btn-danger btn-sm" onclick="openBanModal({{ guild_id }}, '{{ ev.user_id }}', '{{ ev.username or '' }}', '{{ ev.badge_label }}')" title="Bannir définitivement et purger les messages" style="padding: 4px 8px; font-size: 11px;">
+                      🔨 Ban
+                    </button>
+
+                    <!-- Bouton Expulser -->
+                    <button class="btn btn-secondary btn-sm" onclick="kickDirect({{ guild_id }}, '{{ ev.user_id }}')" title="Expulser du serveur (peut revenir si réinvité)" style="padding: 4px 8px; font-size: 11px;">
+                      👢 Kick
+                    </button>
+
+                    <!-- Bouton Timeout (Menu rapide) -->
+                    <button class="btn btn-secondary btn-sm" onclick="openTimeoutModal({{ guild_id }}, '{{ ev.user_id }}', '{{ ev.username or '' }}')" title="Mettre sous silence temporaire" style="padding: 4px 8px; font-size: 11px;">
+                      ⏳ Mute
+                    </button>
+
+                    <!-- Bouton Quarantaine -->
+                    <button class="btn btn-secondary btn-sm" onclick="quarantineDirect({{ guild_id }}, '{{ ev.user_id }}')" title="Isoler dans le salon privé de quarantaine" style="padding: 4px 8px; font-size: 11px;">
+                      ☣️
+                    </button>
+
+                    <!-- Détails Forensiques bruts -->
+                    <button class="btn-hash" onclick="inspectEvidence({{ ev.id }}, '{{ ev.hash }}', '{{ ev.event_type }}', {{ ev.raw_data|tojson }})" title="Voir le bloc SHA-256 signé">
+                      🔍
+                    </button>
+                  </div>
+                {% else %}
+                  <button class="btn-hash" onclick="inspectEvidence({{ ev.id }}, '{{ ev.hash }}', '{{ ev.event_type }}', {{ ev.raw_data|tojson }})" title="Voir la preuve cryptographique">
+                    🔍 Preuve #{{ ev.id }}
+                  </button>
+                {% endif %}
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="6" style="text-align: center; color: var(--text-dim); padding: 30px 0;">
+                Aucun événement de sécurité consigné pour le moment. Le serveur est totalement sain.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Modération : Bannissement -->
+<div id="modal-ban" class="log-modal" style="display: none;">
+  <div class="log-modal-content">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 8px;">
+      <div style="font-weight: 600; color: #ff4757; font-size: 14px; display: flex; align-items: center; gap: 6px;">
+        <span>🔨</span>
+        <span id="ban-modal-title">Bannir l'utilisateur</span>
+      </div>
+      <button onclick="closeModal('modal-ban')" style="background: transparent; border: none; color: var(--text-dim); font-size: 16px; cursor: pointer;">✕</button>
+    </div>
+    
+    <div style="margin-bottom: 12px; font-size: 12.5px; color: var(--text-muted);">
+      Vous vous apprêtez à bannir le compte <strong id="ban-modal-user" style="color: #fff;"></strong> de ce serveur Discord.
+    </div>
+
+    <div style="margin-bottom: 12px;">
+      <label style="display: block; font-size: 11px; font-family: var(--font-mono); color: var(--text-dim); margin-bottom: 4px;">MOTIF DU BANNISSEMENT :</label>
+      <input type="text" id="ban-reason-input" class="form-input" style="width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px 10px; border-radius: 4px; font-size: 12px;" value="Contenu malveillant détecté par Bidabot" />
+    </div>
+
+    <div style="margin-bottom: 16px;">
+      <label style="display: block; font-size: 11px; font-family: var(--font-mono); color: var(--text-dim); margin-bottom: 4px;">PURGE DES MESSAGES RÉCENTS :</label>
+      <select id="ban-delete-days-input" class="form-input" style="width: 100%; box-sizing: border-box; background: #12131a; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px 10px; border-radius: 4px; font-size: 12px;">
+        <option value="1" selected>Purger les dernières 24 heures</option>
+        <option value="7">Purger les 7 derniers jours</option>
+        <option value="0">Ne pas purger les messages</option>
+      </select>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 8px;">
+      <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-ban')">Annuler</button>
+      <button class="btn btn-danger btn-sm" id="ban-confirm-btn" onclick="executeBan()">Confirmer le Bannissement</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Modération : Timeout / Mise au silence -->
+<div id="modal-timeout" class="log-modal" style="display: none;">
+  <div class="log-modal-content">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 8px;">
+      <div style="font-weight: 600; color: #ffa502; font-size: 14px; display: flex; align-items: center; gap: 6px;">
+        <span>⏳</span>
+        <span id="timeout-modal-title">Mettre sous silence (Timeout)</span>
+      </div>
+      <button onclick="closeModal('modal-timeout')" style="background: transparent; border: none; color: var(--text-dim); font-size: 16px; cursor: pointer;">✕</button>
+    </div>
+
+    <div style="margin-bottom: 12px; font-size: 12.5px; color: var(--text-muted);">
+      Le membre <strong id="timeout-modal-user" style="color: #fff;"></strong> sera réduit au silence sur tous les salons.
+    </div>
+
+    <div style="margin-bottom: 12px;">
+      <label style="display: block; font-size: 11px; font-family: var(--font-mono); color: var(--text-dim); margin-bottom: 4px;">DURÉE DU TIMEOUT :</label>
+      <select id="timeout-duration-input" class="form-input" style="width: 100%; box-sizing: border-box; background: #12131a; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px 10px; border-radius: 4px; font-size: 12px;">
+        <option value="600" selected>10 minutes</option>
+        <option value="3600">1 heure</option>
+        <option value="86400">24 heures (1 jour)</option>
+        <option value="604800">1 semaine</option>
+        <option value="0">🔊 Lever le silence (Démuter)</option>
+      </select>
+    </div>
+
+    <div style="margin-bottom: 16px;">
+      <label style="display: block; font-size: 11px; font-family: var(--font-mono); color: var(--text-dim); margin-bottom: 4px;">MOTIF :</label>
+      <input type="text" id="timeout-reason-input" class="form-input" style="width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px 10px; border-radius: 4px; font-size: 12px;" value="Comportement suspect ou spam" />
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 8px;">
+      <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-timeout')">Annuler</button>
+      <button class="btn btn-primary btn-sm" id="timeout-confirm-btn" onclick="executeTimeout()">Appliquer Timeout</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Inspection Preuve Forensique Brute -->
+<div id="modal-evidence" class="log-modal" style="display: none;">
+  <div class="log-modal-content" style="max-width: 580px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 8px;">
+      <div style="font-weight: 600; color: #70a1ff; font-size: 13px; font-family: var(--font-mono);">
+        🔍 INSPECTION BLOC DE PREUVE #<span id="evidence-modal-id"></span>
+      </div>
+      <button onclick="closeModal('modal-evidence')" style="background: transparent; border: none; color: var(--text-dim); font-size: 16px; cursor: pointer;">✕</button>
+    </div>
+
+    <div style="margin-bottom: 10px;">
+      <div style="font-size: 10.5px; font-family: var(--font-mono); color: var(--text-dim); margin-bottom: 2px;">EMPREINTE CRYPTOGRAPHIQUE SHA-256 (RFC 8032) :</div>
+      <div id="evidence-modal-hash" style="font-family: var(--font-mono); font-size: 11px; color: #00ff88; word-break: break-all; background: rgba(0,0,0,0.5); padding: 6px 8px; border-radius: 4px;"></div>
+    </div>
+
+    <div style="margin-bottom: 14px;">
+      <div style="font-size: 10.5px; font-family: var(--font-mono); color: var(--text-dim); margin-bottom: 2px;">DONNÉES DU BLOC SCELLÉ :</div>
+      <pre id="evidence-modal-json" style="font-family: var(--font-mono); font-size: 11px; color: #e1e7ff; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 4px; max-height: 200px; overflow: auto; white-space: pre-wrap; word-break: break-word;"></pre>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end;">
+      <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-evidence')">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .log-filter-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-size: 11px;
+    font-family: var(--font-mono);
+    padding: 4px 10px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .log-filter-btn:hover {
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .log-filter-btn.active {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+  }
+  .btn-copy-id {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    font-size: 10.5px;
+    opacity: 0.6;
+    transition: opacity 0.15s;
+  }
+  .btn-copy-id:hover {
+    opacity: 1;
+  }
+  .btn-hash {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-dim);
+    padding: 3px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 10.5px;
+    transition: all 0.15s ease;
+  }
+  .btn-hash:hover {
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.1);
+  }
+  .log-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  }
+  .log-modal-content {
+    background: #101118;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    padding: 18px;
+    width: 90%;
+    max-width: 440px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  }
+</style>
+
+<script>
+  let activeTargetGuild = {{ guild_id }};
+  let activeTargetUserId = null;
+
+  function filterLogs(category, btn) {
+    document.querySelectorAll('.log-filter-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+
+    document.querySelectorAll('.log-row').forEach(row => {
+      const cat = row.getAttribute('data-category');
+      if (category === 'all' || cat === category) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+  }
+
+  function copyToClipboard(text, msg) {
+    navigator.clipboard.writeText(text);
+    if (typeof showToast === 'function') showToast(msg || 'Copié !');
+  }
+
+  function closeModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  }
+
+  function openBanModal(guildId, userId, userName, reasonHint) {
+    activeTargetGuild = guildId;
+    activeTargetUserId = userId;
+    const modal = document.getElementById('modal-ban');
+    const userLabel = document.getElementById('ban-modal-user');
+    const reasonInput = document.getElementById('ban-reason-input');
+
+    if (userLabel) userLabel.textContent = userName ? `${userName} (${userId})` : userId;
+    if (reasonInput) reasonInput.value = `Sanction ${reasonHint || 'Sécurité'} — Détecté par Bidabot`;
+    if (modal) modal.style.display = 'flex';
+  }
+
+  async function executeBan() {
+    if (!activeTargetUserId) return;
+    const reason = document.getElementById('ban-reason-input').value;
+    const deleteDays = document.getElementById('ban-delete-days-input').value;
+
+    const formData = new FormData();
+    formData.append('reason', reason);
+    formData.append('delete_days', deleteDays);
+
+    const btn = document.getElementById('ban-confirm-btn');
+    if (btn) btn.disabled = true;
+
+    try {
+      const res = await fetch(`/api/guild/${activeTargetGuild}/ban/${activeTargetUserId}`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (res.ok) {
+        closeModal('modal-ban');
+        if (typeof showToast === 'function') showToast(`🔨 Membre ${activeTargetUserId} banni avec succès.`);
+        htmx.ajax('GET', `/dashboard/${activeTargetGuild}/tab/forensics`, { target: '#tab-content', swap: 'innerHTML' });
+      } else {
+        alert("Erreur lors du bannissement.");
+      }
+    } catch (e) {
+      alert("Erreur réseau.");
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  async function kickDirect(guildId, userId) {
+    if (!confirm(`Confirmer l'expulsion immédiate du membre ${userId} ?`)) return;
+    const formData = new FormData();
+    formData.append('reason', 'Expulsion directe via le Dashboard Web');
+
+    const res = await fetch(`/api/guild/${guildId}/kick/${userId}`, { method: 'POST', body: formData });
+    if (res.ok) {
+      if (typeof showToast === 'function') showToast(`👢 Membre ${userId} expulsé.`);
+      htmx.ajax('GET', `/dashboard/${guildId}/tab/forensics`, { target: '#tab-content', swap: 'innerHTML' });
+    }
+  }
+
+  function openTimeoutModal(guildId, userId, userName) {
+    activeTargetGuild = guildId;
+    activeTargetUserId = userId;
+    const modal = document.getElementById('modal-timeout');
+    const userLabel = document.getElementById('timeout-modal-user');
+    if (userLabel) userLabel.textContent = userName ? `${userName} (${userId})` : userId;
+    if (modal) modal.style.display = 'flex';
+  }
+
+  async function executeTimeout() {
+    if (!activeTargetUserId) return;
+    const duration = document.getElementById('timeout-duration-input').value;
+    const reason = document.getElementById('timeout-reason-input').value;
+
+    const formData = new FormData();
+    formData.append('duration', duration);
+    formData.append('reason', reason);
+
+    const btn = document.getElementById('timeout-confirm-btn');
+    if (btn) btn.disabled = true;
+
+    try {
+      const res = await fetch(`/api/guild/${activeTargetGuild}/timeout/${activeTargetUserId}`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (res.ok) {
+        closeModal('modal-timeout');
+        if (typeof showToast === 'function') showToast(`⏳ Timeout appliqué à ${activeTargetUserId}.`);
+        htmx.ajax('GET', `/dashboard/${activeTargetGuild}/tab/forensics`, { target: '#tab-content', swap: 'innerHTML' });
+      }
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  async function quarantineDirect(guildId, userId) {
+    const res = await fetch(`/api/guild/${guildId}/quarantine/${userId}`, { method: 'POST' });
+    if (res.ok) {
+      if (typeof showToast === 'function') showToast(`☣️ Membre ${userId} placé en quarantaine.`);
+      htmx.ajax('GET', `/dashboard/${guildId}/tab/forensics`, { target: '#tab-content', swap: 'innerHTML' });
+    }
+  }
+
+  function inspectEvidence(id, hash, eventType, rawData) {
+    const modal = document.getElementById('modal-evidence');
+    document.getElementById('evidence-modal-id').textContent = id;
+    document.getElementById('evidence-modal-hash').textContent = hash;
+    document.getElementById('evidence-modal-json').textContent = JSON.stringify(rawData, null, 2);
+    if (modal) modal.style.display = 'flex';
+  }
+</script>

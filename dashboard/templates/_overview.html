@@ -1,0 +1,21 @@
+<div class="card">
+    <h2>Vue d'ensemble</h2>
+    <div class="grid">
+        <div class="stat">
+            <div class="val {{ 'warn' if dry_run else 'ok' }}">{{ 'DRY-RUN' if dry_run else 'ACTIF' }}</div>
+            <div class="lbl">Mode lockdown</div>
+        </div>
+        <div class="stat">
+            <div class="val {{ 'bad' if lockdown_active else 'ok' }}">{{ 'ACTIF' if lockdown_active else 'NORMAL' }}</div>
+            <div class="lbl">Lockdown</div>
+        </div>
+        <div class="stat">
+            <div class="val">{{ warrooms }}</div>
+            <div class="lbl">War rooms ouvertes</div>
+        </div>
+        <div class="stat">
+            <div class="val {{ 'ok' if chain_ok else 'bad' }}">{{ 'OK' if chain_ok else 'CORROMPUE' }}</div>
+            <div class="lbl">Chaîne forensique ({{ chain_len }})</div>
+        </div>
+    </div>
+</div>

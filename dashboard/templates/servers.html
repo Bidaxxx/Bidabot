@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 16px;">
+  <div>
+    <h1 style="font-size: 22px; font-weight: 600; color: var(--text-main); margin: 0; letter-spacing: -0.02em;">
+      Serveurs sous surveillance
+    </h1>
+    <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
+      Sélectionnez un serveur pour gérer les filtres anti-raid, la quarantaine et les journaux de preuves.
+    </p>
+  </div>
+
+  <div>
+    <a href="https://discord.com/api/oauth2/authorize?client_id={{ client_id }}&permissions=8&scope=bot%20applications.commands" target="_blank" class="btn btn-primary btn-sm">
+      + Déployer sur un nouveau serveur
+    </a>
+  </div>
+</div>
+
+<div class="servers-registry">
+  {% for s in servers %}
+    <div class="server-entry">
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <div class="server-avatar-box">
+          {% if s.icon %}
+            <img src="https://cdn.discordapp.com/icons/{{ s.id }}/{{ s.icon }}.png" alt="{{ s.name }}">
+          {% else %}
+            <span>{{ s.name[:2]|upper }}</span>
+          {% endif %}
+        </div>
+        <div>
+          <div style="font-size: 14px; font-weight: 600; color: var(--text-main);">
+            {{ s.name }}
+          </div>
+          <div style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); margin-top: 2px;">
+            ID : {{ s.id }}
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        {% if s.is_protected %}
+          <span class="status-pill status-protected">SURVEILLÉ</span>
+          {% if s.dry_run %}
+            <span class="status-pill status-dryrun">SIMULATION</span>
+          {% else %}
+            <span class="status-pill status-live">SANCTIONS RÉELLES</span>
+          {% endif %}
+        {% else %}
+          <span class="status-pill status-unprotected">NON CONFIGURÉ</span>
+        {% endif %}
+
+        {% if s.is_protected %}
+          <a href="/dashboard/{{ s.id }}" class="btn btn-secondary btn-sm" style="margin-left: 8px;">
+            Gérer &rarr;
+          </a>
+        {% else %}
+          <a href="https://discord.com/api/oauth2/authorize?client_id={{ client_id }}&guild_id={{ s.id }}&permissions=8&scope=bot%20applications.commands" target="_blank" class="btn btn-primary btn-sm" style="margin-left: 8px;">
+            Installer
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  {% else %}
+    <div style="padding: 48px 16px; text-align: center; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);">
+      <h3 style="font-size: 16px; font-weight: 600; color: var(--text-main); margin-bottom: 6px;">
+        Aucun serveur actif détecté
+      </h3>
+      <p style="font-size: 13px; color: var(--text-muted); max-width: 440px; margin: 0 auto 16px;">
+        Invitez Bidabot sur votre premier serveur Discord pour activer les défenses en temps réel.
+      </p>
+      <a href="https://discord.com/api/oauth2/authorize?client_id={{ client_id }}&permissions=8&scope=bot%20applications.commands" target="_blank" class="btn btn-primary btn-sm">
+        Inviter le Bot
+      </a>
+    </div>
+  {% endfor %}
+</div>
+
+<style>
+  .servers-registry {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+  .server-entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    transition: background-color 100ms ease;
+  }
+  .server-entry:last-child {
+    border-bottom: none;
+  }
+  .server-entry:hover {
+    background-color: var(--surface-hover);
+  }
+  .server-avatar-box {
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  .server-avatar-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+</style>
+{% endblock %}

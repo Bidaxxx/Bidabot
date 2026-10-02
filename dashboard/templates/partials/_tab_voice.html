@@ -1,0 +1,68 @@
+<div class="voice-section">
+  <div class="card" style="margin-bottom: 16px;">
+    <div class="card-title">Surveillance & Anti-Stresseur Vocal (Module 22)</div>
+    <div class="card-desc">
+      Protection contre les saturations UDP et stresseurs. En cas d'anomalie de latence WebRTC, le salon est instantanément recréé et les membres migrés sans coupure audio.
+    </div>
+
+    <div style="overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>ID Salon Vocal</th>
+            <th>Seuil Déclencheur</th>
+            <th>Auto-Réparation</th>
+            <th style="text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cfg in configs %}
+            <tr>
+              <td style="font-family: var(--font-mono); font-weight: 500;">{{ cfg.channel_id }}</td>
+              <td style="font-family: var(--font-mono);">{{ cfg.max_ping_ms }} ms</td>
+              <td>
+                {% if cfg.auto_renew %}
+                  <span class="status-pill status-protected">ACTIVE</span>
+                {% else %}
+                  <span class="status-pill status-unprotected">DÉSACTIVÉE</span>
+                {% endif %}
+              </td>
+              <td style="text-align: right;">
+                <button class="btn btn-secondary btn-sm" onclick="renewVoiceChannel({{ guild_id }}, {{ cfg.channel_id }})">
+                  Forcer la migration
+                </button>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="4" style="text-align: center; color: var(--text-dim); padding: 20px 0;">
+                Aucun salon vocal configuré individuellement. Utilisez <code class="mono">/bidabot voice autoprotect</code> sur Discord.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" style="background: rgba(255, 255, 255, 0.02);">
+    <div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-main); margin-bottom: 6px;">
+      Fonctionnement de l'Auto-Réparation Vocale
+    </div>
+    <ul style="color: var(--text-muted); font-size: 12.5px; line-height: 1.6; padding-left: 16px;">
+      <li>Un watchdog mesure la latence WebRTC des salons vocaux toutes les 45 secondes.</li>
+      <li>Si le ping dépasse le seuil ou en cas de flood de paquets, Bidabot clone le salon à l'identique (permissions, débit, position).</li>
+      <li>Tous les participants connectés sont transférés en temps réel et l'ancien canal pollué est supprimé.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  async function renewVoiceChannel(guildId, channelId) {
+    if (!confirm("Forcer le renouvellement immédiat de ce salon vocal et le transfert des membres ?")) return;
+    const res = await fetch(`/api/guild/${guildId}/voice/renew/${channelId}`, { method: 'POST' });
+    if (res.ok) {
+      showToast("Salon vocal renouvelé et membres transférés.");
+    }
+  }
+</script>

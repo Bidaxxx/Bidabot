@@ -1,0 +1,142 @@
+<div class="members-section">
+  <!-- Quarantaine Active -->
+  {% if quarantined %}
+    <div class="card" style="margin-bottom: 16px; border-left: 3px solid #ffffff;">
+      <div class="card-title">Membres Actuellement en Quarantaine ({{ quarantined|length }})</div>
+      <div class="card-desc">
+        Ces identifiants sont isolés dans le salon privé et n'ont aucun accès aux canaux publics.
+      </div>
+
+      <div style="overflow-x: auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>ID Utilisateur</th>
+              <th>Motif</th>
+              <th>Date</th>
+              <th style="text-align: right;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for q in quarantined %}
+              <tr>
+                <td style="font-family: var(--font-mono); font-weight: 500;">{{ q.user_id }}</td>
+                <td style="color: var(--text-muted);">{{ q.reason or "Score suspect" }}</td>
+                <td style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);">
+                  {{ q.ts.strftime('%d/%m/%Y %H:%M') if q.ts else 'Récemment' }}
+                </td>
+                <td style="text-align: right;">
+                  <button class="btn btn-secondary btn-sm" onclick="unquarantineUser({{ guild_id }}, {{ q.user_id }})">
+                    Lever l'isolement
+                  </button>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Membres Récents & Scoring -->
+  <div class="card">
+    <div class="card-title">Arrivées Récentes & Score de Risque</div>
+    <div class="card-desc">
+      Calculé en direct lors de la jointure (âge du compte, avatar, vélocité de groupe).
+    </div>
+
+    <div style="overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Utilisateur</th>
+            <th>Âge Compte</th>
+            <th>Score Risque</th>
+            <th>Qualification</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in recent_users %}
+            <tr>
+              <td style="font-family: var(--font-mono); font-weight: 500;">
+                {{ u.discord_id }}
+                {% if u.is_default_avatar %}
+                  <span style="font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); margin-left: 4px;">[AVATAR DÉFAUT]</span>
+                {% endif %}
+              </td>
+              <td style="font-family: var(--font-mono); color: var(--text-muted);">
+                {{ u.account_age_days }}j
+              </td>
+              <td>
+                {% if u.score is not none %}
+                  <span style="font-family: var(--font-mono); font-weight: 600; color: var(--text-main);">
+                    {{ (u.score * 100)|round|int }}%
+                  </span>
+                {% else %}
+                  <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);">N/A</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if u.label == 'legit' %}
+                  <span class="status-pill status-protected">CONFORME</span>
+                {% elif u.label == 'raid' %}
+                  <span class="status-pill status-danger">RAID</span>
+                {% else %}
+                  <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);">EN ATTENTE</span>
+                {% endif %}
+              </td>
+              <td style="text-align: right;">
+                <div style="display: inline-flex; gap: 4px;">
+                  <button class="btn btn-secondary btn-sm" onclick="quarantineUser({{ guild_id }}, {{ u.discord_id }})">
+                    Quarantaine
+                  </button>
+                  <button class="btn btn-secondary btn-sm" onclick="labelUser({{ guild_id }}, {{ u.discord_id }}, 'legit')">
+                    Conforme
+                  </button>
+                  <button class="btn btn-danger btn-sm" onclick="labelUser({{ guild_id }}, {{ u.discord_id }}, 'raid')">
+                    Raid
+                  </button>
+                </div>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="5" style="text-align: center; color: var(--text-dim); padding: 24px 0;">
+                Aucun nouvel arrivant récent consigné.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  async function quarantineUser(guildId, userId) {
+    const res = await fetch(`/api/guild/${guildId}/quarantine/${userId}`, { method: 'POST' });
+    if (res.ok) {
+      showToast(`Utilisateur ${userId} mis en quarantaine.`);
+      htmx.ajax('GET', `/dashboard/${guildId}/tab/members`, { target: '#tab-content', swap: 'innerHTML' });
+    }
+  }
+
+  async function unquarantineUser(guildId, userId) {
+    const res = await fetch(`/api/guild/${guildId}/unquarantine/${userId}`, { method: 'POST' });
+    if (res.ok) {
+      showToast(`Quarantaine levée pour ${userId}.`);
+      htmx.ajax('GET', `/dashboard/${guildId}/tab/members`, { target: '#tab-content', swap: 'innerHTML' });
+    }
+  }
+
+  async function labelUser(guildId, userId, label) {
+    const formData = new FormData();
+    formData.append('label', label);
+    const res = await fetch(`/api/guild/${guildId}/label/${userId}`, { method: 'POST', body: formData });
+    if (res.ok) {
+      showToast(`Label ${label.toUpperCase()} enregistré.`);
+      htmx.ajax('GET', `/dashboard/${guildId}/tab/members`, { target: '#tab-content', swap: 'innerHTML' });
+    }
+  }
+</script>

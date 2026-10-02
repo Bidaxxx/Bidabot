@@ -1,0 +1,175 @@
+<div class="channels-section">
+  <!-- En-tête Salons & Permissions -->
+  <div class="card" style="margin-bottom: 16px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+      <div>
+        <div class="card-title">Gestionnaire en Direct des Salons & Permissions</div>
+        <div class="card-desc">
+          Contrôlez l'état de chaque salon en temps réel : verrouillage d'urgence individuel, ajustement immédiat du Slowmode et purge express de messages pollués.
+        </div>
+      </div>
+      <div>
+        <button class="btn btn-secondary btn-sm" onclick="reloadChannelsTab({{ guild_id }})">
+          🔄 Actualiser les salons
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tableau des Salons -->
+  <div class="card">
+    <div style="overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Nom du Salon</th>
+            <th>État Accès</th>
+            <th>Mode Lent (Slowmode)</th>
+            <th style="text-align: right;">Purge & Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ch in channels %}
+            <tr>
+              <td style="width: 40px; font-size: 16px;">
+                {% if ch.type == 2 %}
+                  🔊
+                {% elif ch.type == 4 %}
+                  📁
+                {% else %}
+                  #
+                {% endif %}
+              </td>
+              <td>
+                <span style="font-weight: 600; color: var(--text-main);">{{ ch.name }}</span>
+                <span style="font-size: 11px; color: var(--text-dim); font-family: var(--font-mono); margin-left: 6px;">ID: {{ ch.id }}</span>
+              </td>
+              <td>
+                {% if ch.is_locked %}
+                  <span class="status-pill status-bad" style="margin-right: 6px;">VERROUILLÉ</span>
+                  <button class="btn btn-secondary btn-sm" style="padding: 3px 8px; font-size: 11px;"
+                          onclick="toggleChannelLock({{ guild_id }}, '{{ ch.id }}', false)">
+                    Déverrouiller
+                  </button>
+                {% else %}
+                  <span class="status-pill status-protected" style="margin-right: 6px;">ACCÈS LIBRE</span>
+                  <button class="btn btn-danger btn-sm" style="padding: 3px 8px; font-size: 11px;"
+                          onclick="toggleChannelLock({{ guild_id }}, '{{ ch.id }}', true)">
+                    Verrouiller
+                  </button>
+                {% endif %}
+              </td>
+              <td>
+                {% if ch.type == 0 %}
+                  <select class="form-input" style="padding: 4px 8px; font-size: 11.5px; width: 140px; background: rgba(0,0,0,0.4);"
+                          onchange="changeSlowmode({{ guild_id }}, '{{ ch.id }}', this.value)">
+                    <option value="0" {% if ch.slowmode == 0 %}selected{% endif %}>Désactivé</option>
+                    <option value="5" {% if ch.slowmode == 5 %}selected{% endif %}>5 secondes</option>
+                    <option value="10" {% if ch.slowmode == 10 %}selected{% endif %}>10 secondes</option>
+                    <option value="15" {% if ch.slowmode == 15 %}selected{% endif %}>15 secondes</option>
+                    <option value="30" {% if ch.slowmode == 30 %}selected{% endif %}>30 secondes</option>
+                    <option value="60" {% if ch.slowmode == 60 %}selected{% endif %}>1 minute</option>
+                    <option value="120" {% if ch.slowmode == 120 %}selected{% endif %}>2 minutes</option>
+                    <option value="300" {% if ch.slowmode == 300 %}selected{% endif %}>5 minutes</option>
+                    <option value="600" {% if ch.slowmode == 600 %}selected{% endif %}>10 minutes</option>
+                    <option value="900" {% if ch.slowmode == 900 %}selected{% endif %}>15 minutes</option>
+                    <option value="1800" {% if ch.slowmode == 1800 %}selected{% endif %}>30 minutes</option>
+                    <option value="3600" {% if ch.slowmode == 3600 %}selected{% endif %}>1 heure</option>
+                    <option value="7200" {% if ch.slowmode == 7200 %}selected{% endif %}>2 heures</option>
+                    <option value="21600" {% if ch.slowmode == 21600 %}selected{% endif %}>6 heures</option>
+                  </select>
+                {% else %}
+                  <span style="color: var(--text-dim); font-size: 11px;">N/A (Vocal)</span>
+                {% endif %}
+              </td>
+              <td style="text-align: right; white-space: nowrap;">
+                {% if ch.type == 0 %}
+                  <div style="display: inline-flex; align-items: center; gap: 6px;">
+                    <select id="purge-count-{{ ch.id }}" class="form-input" style="padding: 3px 6px; font-size: 11px; width: 80px; background: rgba(0,0,0,0.4);">
+                      <option value="10">10 msgs</option>
+                      <option value="25" selected>25 msgs</option>
+                      <option value="50">50 msgs</option>
+                      <option value="100">100 msgs</option>
+                    </select>
+                    <button class="btn btn-secondary btn-sm" style="padding: 4px 8px; font-size: 11px;"
+                            onclick="purgeChannel({{ guild_id }}, '{{ ch.id }}', '{{ ch.name|escape }}')">
+                      🧹 Purger
+                    </button>
+                  </div>
+                {% else %}
+                  <span style="color: var(--text-dim); font-size: 11px;">-</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="5" style="text-align: center; color: var(--text-dim); padding: 30px 0;">
+                Aucun salon récupéré. Vérifiez que le bot possède bien la permission 'Voir les salons'.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  function reloadChannelsTab(guildId) {
+    htmx.ajax('GET', `/dashboard/${guildId}/tab/channels`, { target: '#tab-content', swap: 'innerHTML' });
+  }
+
+  async function toggleChannelLock(guildId, channelId, lock) {
+    const action = lock ? 'lock' : 'unlock';
+    const fd = new FormData();
+    fd.append('channel_id', channelId);
+    fd.append('lock', lock);
+
+    showToast(lock ? "Verrouillage du salon en cours..." : "Déverrouillage en cours...");
+    const res = await fetch(`/api/guild/${guildId}/channel/${channelId}/${action}`, { method: 'POST' });
+    if (res.ok) {
+      showToast(lock ? "Salon verrouillé sur Discord !" : "Salon déverrouillé !");
+      setTimeout(() => reloadChannelsTab(guildId), 600);
+    } else {
+      showToast("Erreur lors de la modification des permissions.");
+    }
+  }
+
+  async function changeSlowmode(guildId, channelId, delay) {
+    const fd = new FormData();
+    fd.append('delay', delay);
+
+    const res = await fetch(`/api/guild/${guildId}/channel/${channelId}/slowmode`, {
+      method: 'POST',
+      body: fd,
+    });
+    if (res.ok) {
+      showToast(`Slowmode réglé à ${delay}s.`);
+    } else {
+      showToast("Erreur lors de la modification du slowmode.");
+    }
+  }
+
+  async function purgeChannel(guildId, channelId, channelName) {
+    const select = document.getElementById(`purge-count-${channelId}`);
+    const count = select ? select.value : 25;
+    if (!confirm(`Supprimer immédiatement les ${count} derniers messages dans #${channelName} ?`)) {
+      return;
+    }
+
+    const fd = new FormData();
+    fd.append('count', count);
+
+    showToast(`Purge des ${count} messages en cours...`);
+    const res = await fetch(`/api/guild/${guildId}/channel/${channelId}/purge`, {
+      method: 'POST',
+      body: fd,
+    });
+    if (res.ok) {
+      showToast(`Purge de ${count} messages effectuée sur Discord !`);
+    } else {
+      showToast("Erreur lors de la purge.");
+    }
+  }
+</script>

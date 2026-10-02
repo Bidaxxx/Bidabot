@@ -1,0 +1,2 @@
+ALTER TABLE guilds ADD COLUMN IF NOT EXISTS warroom_category_id BIGINT;
+ALTER TABLE guilds ADD COLUMN IF NOT EXISTS log_channel_id BIGINT;

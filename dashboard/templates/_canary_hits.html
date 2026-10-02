@@ -1,0 +1,14 @@
+<table>
+    <tr><th>Utilisateur</th><th>Salon</th><th>Type</th><th>IP (hashée)</th><th>Horodatage</th></tr>
+    {% for r in rows %}
+    <tr>
+        <td>{{ r.user_id or "— (clic lien)" }}</td>
+        <td>{{ r.channel_id }}</td>
+        <td>{{ r.kind }}</td>
+        <td>{{ (r.ip_hash[:12] + "…") if r.ip_hash else "—" }}</td>
+        <td>{{ r.ts.strftime("%Y-%m-%d %H:%M:%S") }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5">Aucune donnée.</td></tr>
+    {% endfor %}
+</table>

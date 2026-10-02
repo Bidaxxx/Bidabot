@@ -1,0 +1,222 @@
+<div class="audit-section">
+  <!-- Scorecard Banner -->
+  <div class="card" style="margin-bottom: 16px; background: linear-gradient(135deg, rgba(18, 20, 29, 0.9) 0%, rgba(26, 31, 46, 0.8) 100%); border-color: rgba(88, 101, 242, 0.3);">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+      <div style="display: flex; align-items: center; gap: 20px;">
+        <div style="width: 84px; height: 84px; border-radius: 16px; background: rgba(0,0,0,0.4); border: 2px solid {{ audit.grade_color }}; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 0 20px {{ audit.grade_color }}33;">
+          <div style="font-family: var(--font-mono); font-size: 34px; font-weight: 800; color: {{ audit.grade_color }}; line-height: 1;">
+            {{ audit.grade }}
+          </div>
+          <div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); margin-top: 2px;">
+            {{ audit.score }}/100
+          </div>
+        </div>
+        <div>
+          <div style="font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: {{ audit.grade_color }}; margin-bottom: 4px;">
+            ● {{ audit.status_label }}
+          </div>
+          <h2 style="font-size: 18px; font-weight: 600; color: var(--text-main); margin: 0 0 4px 0;">
+            Audit de Sécurité & Posture Globale
+          </h2>
+          <div style="font-size: 12.5px; color: var(--text-muted); max-width: 550px;">
+            Évalue les permissions des rôles publics, l'exigence 2FA pour la modération, la politique de vérification et les surfaces d'attaque du serveur Discord.
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <button class="btn btn-secondary btn-sm" onclick="reloadAuditTab({{ guild_id }})">
+          🔄 Ré-analyser le serveur
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Résumé Failles -->
+  <div class="grid" style="grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
+    <div class="stat">
+      <div class="lbl">Failles Critiques</div>
+      <div class="val {{ 'bad' if audit.critical_count > 0 else 'ok' }}" style="margin-top: 6px;">
+        {{ audit.critical_count }}
+      </div>
+      <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">Vecteurs de nuke immédiat</div>
+    </div>
+
+    <div class="stat">
+      <div class="lbl">Failles Élevées</div>
+      <div class="val {{ 'warn' if audit.high_count > 0 else 'ok' }}" style="margin-top: 6px;">
+        {{ audit.high_count }}
+      </div>
+      <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">Risques de contournement</div>
+    </div>
+
+    <div class="stat">
+      <div class="lbl">Auto-Remédiations Possibles</div>
+      <div class="val ok" style="margin-top: 6px;">
+        {{ audit.vulnerabilities|selectattr('auto_fixable')|list|length }}
+      </div>
+      <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">Corrections 1-Clic prêtes</div>
+    </div>
+  </div>
+
+  <!-- Liste des Vulnérabilités -->
+  <div class="card" style="margin-bottom: 20px;">
+    <div class="card-title" style="margin-bottom: 12px;">Failles Détectées & Recommandations</div>
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      {% for v in audit.vulnerabilities %}
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: var(--radius); flex-wrap: wrap; gap: 12px;">
+          <div style="flex: 1; min-width: 280px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+              <span class="status-pill status-{{ 'bad' if v.severity == 'critical' else ('warn' if v.severity == 'high' else 'unprotected') }}" style="font-family: var(--font-mono); font-size: 10px;">
+                {{ v.severity|upper }}
+              </span>
+              <span style="font-weight: 600; font-size: 13.5px; color: var(--text-main);">{{ v.title }}</span>
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted); line-height: 1.4;">
+              {{ v.description }}
+            </div>
+          </div>
+          <div>
+            {% if v.auto_fixable %}
+              <button class="btn btn-primary btn-sm" onclick="executeAuditFix({{ guild_id }}, '{{ v.fix_action }}', '{{ v.title|escape }}')">
+                🛡️ Corriger en 1 Clic
+              </button>
+            {% else %}
+              <span style="font-size: 11px; color: var(--text-dim); font-family: var(--font-mono);">
+                Action manuelle requise
+              </span>
+            {% endif %}
+          </div>
+        </div>
+      {% else %}
+        <div style="text-align: center; padding: 30px 0; color: var(--text-dim);">
+          <div style="font-size: 26px; margin-bottom: 6px;">🛡️</div>
+          <div style="font-weight: 500; color: #00ff88;">Aucune vulnérabilité critique détectée !</div>
+          <div style="font-size: 12px; margin-top: 4px;">La configuration de votre serveur respecte les critères de sécurité optimaux.</div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- 🎯 Sandbox Pentest & Simulateur Red Team -->
+  <div class="card" style="border-color: rgba(255, 71, 87, 0.3); background: #0c0d11;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.06);">
+      <div>
+        <div class="card-title" style="color: #ff4757; display: flex; align-items: center; gap: 8px;">
+          <span>🎯</span> Simulateur Red Team & Sandbox Pentest
+        </div>
+        <div class="card-desc">
+          Testez et validez en direct l'efficacité des modules de défense Bidabot sans aucun risque pour le serveur.
+        </div>
+      </div>
+      <div>
+        <span class="status-pill status-protected" style="font-family: var(--font-mono); font-size: 10px;">
+          ENVIRONNEMENT ISOLÉ
+        </span>
+      </div>
+    </div>
+
+    <!-- Choix des scénarios de test -->
+    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-bottom: 14px;">
+      <div class="pentest-card" onclick="runPentest({{ guild_id }}, 'raid_attack')">
+        <div style="font-size: 20px; margin-bottom: 4px;">🚀</div>
+        <div style="font-weight: 600; font-size: 12.5px; color: var(--text-main); margin-bottom: 2px;">Vague de Tokens Raid</div>
+        <div style="font-size: 11px; color: var(--text-dim);">Simule 10 arrivées éclair et mesure l'auto-quarantaine.</div>
+      </div>
+
+      <div class="pentest-card" onclick="runPentest({{ guild_id }}, 'scam_wave')">
+        <div style="font-size: 20px; margin-bottom: 4px;">🎣</div>
+        <div style="font-weight: 600; font-size: 12.5px; color: var(--text-main); margin-bottom: 2px;">Scams Nitro & Phishing</div>
+        <div style="font-size: 11px; color: var(--text-dim);">Injecte 3 vecteurs d'arnaque et valide l'interception.</div>
+      </div>
+
+      <div class="pentest-card" onclick="runPentest({{ guild_id }}, 'staff_impersonation')">
+        <div style="font-size: 20px; margin-bottom: 4px;">🎭</div>
+        <div style="font-weight: 600; font-size: 12.5px; color: var(--text-main); margin-bottom: 2px;">Usurpation Staff (Homoglyphe)</div>
+        <div style="font-size: 11px; color: var(--text-dim);">Teste la détection de faux pseudos cyrilliques.</div>
+      </div>
+
+      <div class="pentest-card" onclick="runPentest({{ guild_id }}, 'voice_stress')">
+        <div style="font-size: 20px; margin-bottom: 4px;">💥</div>
+        <div style="font-weight: 600; font-size: 12.5px; color: var(--text-main); margin-bottom: 2px;">Stresseur Vocal (WebRTC)</div>
+        <div style="font-size: 11px; color: var(--text-dim);">Simule un ping de 485ms et le clonage chirurgical.</div>
+      </div>
+    </div>
+
+    <!-- Rapport de résultat Pentest -->
+    <div id="pentest-result-box" style="display: none; padding: 12px; background: rgba(0,0,0,0.5); border: 1px solid var(--border); border-radius: var(--radius); font-family: var(--font-mono); font-size: 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <span style="color: #00ff88; font-weight: 600;" id="pentest-scenario-title">RÉSULTAT DU PENTEST</span>
+        <span style="color: var(--text-dim); font-size: 11px;" id="pentest-speed">Temps : -- ms</span>
+      </div>
+      <div id="pentest-details" style="color: var(--text-muted); font-size: 11.5px; line-height: 1.6;"></div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .pentest-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .pentest-card:hover {
+    border-color: #ff4757;
+    background: rgba(255, 71, 87, 0.05);
+    transform: translateY(-2px);
+  }
+</style>
+
+<script>
+  function reloadAuditTab(guildId) {
+    htmx.ajax('GET', `/dashboard/${guildId}/tab/audit`, { target: '#tab-content', swap: 'innerHTML' });
+  }
+
+  async function executeAuditFix(guildId, fixAction, title) {
+    if (!confirm(`Appliquer la correction automatique pour :\n"${title}" ?`)) return;
+
+    showToast("Application de la correction de sécurité...");
+    const res = await fetch(`/api/guild/${guildId}/audit/fix/${fixAction}`, { method: 'POST' });
+    if (res.ok) {
+      showToast("Correction appliquée avec succès !");
+      setTimeout(() => reloadAuditTab(guildId), 800);
+    } else {
+      showToast("Erreur lors de la correction.");
+    }
+  }
+
+  async function runPentest(guildId, scenario) {
+    const box = document.getElementById('pentest-result-box');
+    const title = document.getElementById('pentest-scenario-title');
+    const speed = document.getElementById('pentest-speed');
+    const details = document.getElementById('pentest-details');
+
+    box.style.display = 'block';
+    title.textContent = "SIMULATION RED TEAM EN COURS...";
+    speed.textContent = "Calcul...";
+    details.innerHTML = "Injection de l'attaque contrôlée dans la sandbox...";
+
+    try {
+      const res = await fetch(`/api/guild/${guildId}/pentest/${scenario}`, { method: 'POST' });
+      const data = await res.json();
+
+      title.innerHTML = `🛡️ ${data.scenario} &bull; <span style="color:#00ff88;">${data.status}</span>`;
+      speed.textContent = `Temps de réaction : ${data.detection_time_ms} ms`;
+
+      let html = `<div><strong>Riposte Bidabot :</strong> <span style="color:var(--text-main);">${data.defense_action}</span></div>`;
+      html += `<div><strong>Taux de neutralisation :</strong> <span style="color:#00ff88; font-weight:600;">${data.neutralization_rate}</span></div>`;
+      if (data.details) {
+        html += `<div style="margin-top:6px; color:var(--text-dim);">Profils testés : ${data.details.map(d => `${d.bot_id} (Score: ${d.risk_score})`).join(', ')}</div>`;
+      }
+      if (data.reasons) {
+        html += `<div style="margin-top:6px; color:var(--text-dim);">Motifs d'interception : ${data.reasons.join(', ')}</div>`;
+      }
+      details.innerHTML = html;
+    } catch (e) {
+      details.textContent = "Erreur lors de la simulation.";
+    }
+  }
+</script>

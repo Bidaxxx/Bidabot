@@ -1,0 +1,142 @@
+<div class="security-section">
+  <div class="card">
+    <div class="card-title">Filtres de Modération & Sécurité Active</div>
+    <div class="card-desc">
+      Activez ou désactivez les moteurs heuristiques en temps réel.
+    </div>
+
+    <form id="security-form" onsubmit="saveSecuritySettings(event, {{ guild_id }})">
+      <input type="hidden" name="section" value="security">
+      <div class="settings-list">
+        <!-- Anti-Scam -->
+        <div class="setting-item">
+          <div>
+            <div class="setting-title">Anti-Scam & Faux Nitro (Module 11)</div>
+            <div class="setting-desc">Supprime les liens de phishing, scams Nitro, faux giveaways et extensions dangereuses.</div>
+          </div>
+          <div>
+            <label class="switch">
+              <input type="checkbox" name="anti_scam_enabled" onchange="toggleSecuritySetting(this, 'anti_scam_enabled', {{ guild_id }})" {% if guild.anti_scam_enabled is not defined or guild.anti_scam_enabled %}checked{% endif %}>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Anti-Spam -->
+        <div class="setting-item">
+          <div>
+            <div class="setting-title">Anti-Spam & Flood (Module 10)</div>
+            <div class="setting-desc">Détecte les rafales de messages répétitifs et applique un timeout graduel.</div>
+          </div>
+          <div>
+            <label class="switch">
+              <input type="checkbox" name="anti_spam_enabled" onchange="toggleSecuritySetting(this, 'anti_spam_enabled', {{ guild_id }})" {% if guild.anti_spam_enabled is not defined or guild.anti_spam_enabled %}checked{% endif %}>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Anti-Ghostping -->
+        <div class="setting-item">
+          <div>
+            <div class="setting-title">Anti-Ghostping (Module 20)</div>
+            <div class="setting-desc">Alerte dans le salon d'audit lorsqu'un message avec mention est immédiatement supprimé.</div>
+          </div>
+          <div>
+            <label class="switch">
+              <input type="checkbox" name="anti_ghostping_enabled" onchange="toggleSecuritySetting(this, 'anti_ghostping_enabled', {{ guild_id }})" {% if guild.anti_ghostping_enabled is not defined or guild.anti_ghostping_enabled %}checked{% endif %}>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Anti-Nuke -->
+        <div class="setting-item">
+          <div>
+            <div class="setting-title">Anti-Nuke & Rogue Admin (Module 18)</div>
+            <div class="setting-desc">Isole en 10 secondes tout compte staff qui supprime massivement des salons ou rôles.</div>
+          </div>
+          <div>
+            <label class="switch">
+              <input type="checkbox" name="anti_nuke_enabled" onchange="toggleSecuritySetting(this, 'anti_nuke_enabled', {{ guild_id }})" {% if guild.anti_nuke_enabled is not defined or guild.anti_nuke_enabled %}checked{% endif %}>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Anti-Impersonation -->
+        <div class="setting-item">
+          <div>
+            <div class="setting-title">Anti-Usurpation d'Identité (Module 19)</div>
+            <div class="setting-desc">Bloque les comptes utilisant des homoglyphes ou caractères invisibles pour cloner le staff.</div>
+          </div>
+          <div>
+            <label class="switch">
+              <input type="checkbox" name="anti_impersonation_enabled" onchange="toggleSecuritySetting(this, 'anti_impersonation_enabled', {{ guild_id }})" {% if guild.anti_impersonation_enabled is not defined or guild.anti_impersonation_enabled %}checked{% endif %}>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Anti-Malware & Stealers -->
+        <div class="setting-item">
+          <div>
+            <div class="setting-title">Bouclier Anti-Malware & Trojans (Module 24)</div>
+            <div class="setting-desc">Intercepte les fichiers dangereux (.exe, .scr, .bat, .vbs, .ps1, archives douteuses) et interroge VirusTotal v3.</div>
+          </div>
+          <div>
+            <label class="switch">
+              <input type="checkbox" name="anti_malware_enabled" onchange="toggleSecuritySetting(this, 'anti_malware_enabled', {{ guild_id }})" {% if guild.anti_malware_enabled is not defined or guild.anti_malware_enabled %}checked{% endif %}>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 11px; color: var(--text-dim);">⚡ Modification en temps réel activée (sauvegarde instantanée sur bascule).</span>
+        <button type="submit" class="btn btn-primary btn-sm">
+          Tout sauvegarder
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  async function toggleSecuritySetting(el, settingName, guildId) {
+    const isChecked = el.checked;
+    const label = el.closest('.setting-item')?.querySelector('.setting-title')?.innerText?.split('(')[0]?.trim() || settingName;
+    const fd = new FormData();
+    fd.append("setting", settingName);
+    fd.append("enabled", isChecked ? "true" : "false");
+
+    try {
+      const res = await fetch(`/api/guild/${guildId}/settings/toggle`, {
+        method: "POST",
+        body: fd
+      });
+      if (res.ok) {
+        showToast(isChecked ? `🟢 ${label} activé (temps réel)` : `⚪ ${label} désactivé`);
+      } else {
+        el.checked = !isChecked;
+        showToast("❌ Erreur de sauvegarde");
+      }
+    } catch(err) {
+      el.checked = !isChecked;
+      showToast("❌ Erreur réseau");
+    }
+  }
+
+  async function saveSecuritySettings(e, guildId) {
+    e.preventDefault();
+    const form = document.getElementById('security-form');
+    const formData = new FormData(form);
+    const res = await fetch(`/api/guild/${guildId}/settings`, { method: 'POST', body: formData });
+    if (res.ok) {
+      showToast("Filtres de sécurité actualisés.");
+    } else {
+      showToast("Erreur lors de la sauvegarde.");
+    }
+  }
+</script>

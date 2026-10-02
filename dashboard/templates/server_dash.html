@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- En-tête Console Serveur -->
+<div style="margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border);">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <div class="server-avatar-console">
+        {% if guild.icon %}
+          <img src="https://cdn.discordapp.com/icons/{{ guild_id }}/{{ guild.icon }}.png" alt="{{ guild_name }}">
+        {% else %}
+          <span>{{ guild_name[:2]|upper }}</span>
+        {% endif %}
+      </div>
+      <div>
+        <div style="font-family: var(--font-mono); font-size: 10.5px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 2px;">
+          <a href="/dashboard" style="color: var(--text-dim);">Serveurs</a> &nbsp;/&nbsp; Console
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <h1 style="font-size: 20px; font-weight: 600; color: var(--text-main); margin: 0; letter-spacing: -0.02em;">
+            {{ guild_name }}
+          </h1>
+          <span class="status-pill status-protected">ACTIF</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; margin-top: 4px; font-size: 12px; color: var(--text-muted);">
+          <span style="font-family: var(--font-mono); color: var(--text-dim);">ID : {{ guild_id }}</span>
+          <span style="color: var(--border);">&bull;</span>
+          <span>Trust Score : <strong style="font-family: var(--font-mono); color: var(--text-main);">{{ trust_score }}/100</strong></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions Rapides -->
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <a href="/api/guild/{{ guild_id }}/report.pdf" target="_blank" class="btn btn-secondary btn-sm" title="Télécharger le rapport forensique PDF signé Ed25519">
+        Rapport PDF (Ed25519)
+      </a>
+      <button class="btn btn-danger btn-sm" onclick="triggerPanic({{ guild_id }})">
+        Mode Panique
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Navigation par Onglets (Linear Style) -->
+<div class="dash-tabs">
+  <button class="tab-btn active" onclick="switchTab(this, '/dashboard/{{ guild_id }}/tab/overview')">
+    Vue d'ensemble
+  </button>
+  <button class="tab-btn" onclick="switchTab(this, '/dashboard/{{ guild_id }}/tab/antiraid')">
+    Anti-raid
+  </button>
+  <button class="tab-btn" onclick="switchTab(this, '/dashboard/{{ guild_id }}/tab/security')">
+    Filtres & Sécurité
+  </button>
+  <button class="tab-btn" onclick="switchTab(this, '/dashboard/{{ guild_id }}/tab/members')">
+    Membres & Quarantaine
+  </button>
+  <button class="tab-btn" onclick="switchTab(this, '/dashboard/{{ guild_id }}/tab/whitelist')">
+    Whitelist
+  </button>
+  <button class="tab-btn" onclick="switchTab(this, '/dashboard/{{ guild_id }}/tab/voice')">
+    Salons vocaux
+  </button>
+  <button class="tab-btn" onclick="switchTab(this, '/dashboard/{{ guild_id }}/tab/backups')">
+    Sauvegardes
+  </button>
+  <button class="tab-btn" onclick="switchTab(this, '/dashboard/{{ guild_id }}/tab/forensics')">
+    Chaîne de preuves
+  </button>
+  <button class="tab-btn" onclick="switchTab(this, '/dashboard/{{ guild_id }}/tab/audit')">
+    Audit & Scorecard
+  </button>
+  <button class="tab-btn" onclick="switchTab(this, '/dashboard/{{ guild_id }}/tab/channels')">
+    Salons & Slowmode
+  </button>
+  <button class="tab-btn" onclick="switchTab(this, '/dashboard/{{ guild_id }}/tab/console')">
+    Console CLI
+  </button>
+</div>
+
+<!-- Contenu Dynamique HTMX -->
+<div id="tab-content" hx-get="/dashboard/{{ guild_id }}/tab/overview" hx-trigger="load" hx-swap="innerHTML">
+  <div style="padding: 40px 0; text-align: center; color: var(--text-dim); font-family: var(--font-mono); font-size: 11px;">
+    CHARGEMENT...
+  </div>
+</div>
+
+<style>
+  .server-avatar-console {
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 15px;
+  }
+  .server-avatar-console img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+</style>
+
+<script>
+  function switchTab(btn, url) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    htmx.ajax('GET', url, { target: '#tab-content', swap: 'innerHTML' });
+  }
+
+  async function triggerPanic(guildId) {
+    if (!confirm("Activer le MODE PANIQUE ?\n\nVerrouille immédiatement l'écriture sur tous les canaux publics.")) {
+      return;
+    }
+    const res = await fetch(`/api/guild/${guildId}/panic`, { method: 'POST' });
+    if (res.ok) {
+      showToast("Mode Panique activé.");
+      setTimeout(() => {
+        htmx.ajax('GET', `/dashboard/${guildId}/tab/overview`, { target: '#tab-content', swap: 'innerHTML' });
+      }, 300);
+    }
+  }
+</script>
+{% endblock %}

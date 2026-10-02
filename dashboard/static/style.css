@@ -1,0 +1,541 @@
+/* ==========================================================================
+   SENTINEL — PURE MONOCHROME DARK DESIGN SYSTEM
+   Direction : 100% Monochrome sombre, zéro dégradé, zéro couleur vive, zéro artifice
+   ========================================================================== */
+
+:root {
+  /* Palette 100% Monochrome Sombre */
+  --bg: #000000;               /* Noir absolu */
+  --surface: #0a0a0a;          /* Surface de bloc */
+  --surface-hover: #141414;    /* Survol discret */
+  --border: #1f1f1f;           /* Filet 1px sombre */
+  --border-subtle: #2b2b2b;    /* Bordure légèrement plus marquée */
+  --border-focus: #ffffff;     /* Focus blanc pur */
+
+  --text-main: #ffffff;        /* Blanc pur */
+  --text-muted: #888888;       /* Gris neutre */
+  --text-dim: #555555;         /* Gris sombre */
+
+  --accent: #ffffff;
+  --accent-text: #000000;
+
+  /* Typographie */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Géométrie */
+  --radius: 4px;
+  --max-w: 1140px;
+}
+
+/* ── Reset ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 14px;
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  background-color: var(--bg);
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg);
+  color: var(--text-main);
+  line-height: 1.5;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Typographie ── */
+h1, h2, h3, h4 {
+  color: var(--text-main);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+p {
+  color: var(--text-muted);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: color 100ms ease;
+}
+
+a:hover {
+  color: var(--text-main);
+}
+
+code, pre, .mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Navigation ── */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-name {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-main);
+}
+
+.brand-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  border-left: 1px solid var(--border);
+  padding-left: 8px;
+}
+
+.nav-links {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.nav-link {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.nav-link:hover {
+  color: var(--text-main);
+}
+
+.nav-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ── Boutons Monochrome ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background-color 100ms ease, border-color 100ms ease, color 100ms ease;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background-color: #ffffff;
+  color: #000000;
+  border-color: #ffffff;
+}
+
+.btn-primary:hover {
+  background-color: #d4d4d8;
+  border-color: #d4d4d8;
+}
+
+.btn-secondary {
+  background-color: #000000;
+  color: var(--text-main);
+  border-color: var(--border);
+}
+
+.btn-secondary:hover {
+  background-color: var(--surface);
+  border-color: var(--border-subtle);
+}
+
+.btn-danger {
+  background-color: #000000;
+  color: #ffffff;
+  border-color: var(--border-subtle);
+}
+
+.btn-danger:hover {
+  background-color: #1a1a1a;
+  border-color: #ffffff;
+}
+
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+/* ── Layout & Conteneur ── */
+.container {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 0 24px;
+  width: 100%;
+}
+
+.dash-main {
+  flex: 1;
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 32px 24px 60px;
+  width: 100%;
+}
+
+/* ── Blocs & Cartes Monochrome ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.card h2, .card-title {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-main);
+  margin-bottom: 12px;
+}
+
+.card-desc {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin-top: -6px;
+  margin-bottom: 16px;
+}
+
+/* ── Grille & Statistiques ── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.stat .lbl {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.stat .val {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-main);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Tableaux ── */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+th, td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+th {
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: #050505;
+}
+
+tr:hover td {
+  background-color: var(--surface-hover);
+}
+
+/* ── Badges & Statuts 100% Monochrome ── */
+.ok { color: var(--text-main); font-weight: 600; }
+.bad { color: var(--text-main); font-weight: 600; text-decoration: underline; }
+.warn { color: var(--text-muted); font-weight: 600; }
+
+.status-pill {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: var(--radius);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: #000000;
+  color: var(--text-main);
+  border: 1px solid var(--border);
+}
+
+.status-protected, .status-live {
+  background: #111111;
+  color: #ffffff;
+  border-color: #333333;
+}
+
+.status-dryrun {
+  background: #000000;
+  color: #888888;
+  border-color: #222222;
+}
+
+.status-danger {
+  background: #ffffff;
+  color: #000000;
+  border-color: #ffffff;
+  font-weight: 600;
+}
+
+.status-unprotected {
+  background: #000000;
+  color: var(--text-dim);
+  border-color: var(--border);
+}
+
+/* ── Formulaires Monochrome ── */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.form-input, .form-select {
+  width: 100%;
+  padding: 8px 12px;
+  background: #000000;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 100ms ease;
+}
+
+.form-input:focus, .form-select:focus {
+  border-color: var(--border-focus);
+}
+
+/* ── Commutateurs Monochrome ── */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  vertical-align: middle;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #141414;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  transition: background-color 100ms ease;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 12px;
+  width: 12px;
+  left: 3px;
+  bottom: 3px;
+  background-color: #666666;
+  border-radius: 50%;
+  transition: transform 100ms ease, background-color 100ms ease;
+}
+
+input:checked + .slider {
+  background-color: #ffffff;
+  border-color: #ffffff;
+}
+
+input:checked + .slider:before {
+  transform: translateX(16px);
+  background-color: #000000;
+}
+
+/* ── Liste de Réglages ── */
+.settings-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.setting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.setting-item:last-child {
+  border-bottom: none;
+}
+
+.setting-title {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.setting-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ── Onglets Monochrome ── */
+.dash-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+  overflow-x: auto;
+}
+
+.tab-btn {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 10px 16px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 100ms ease;
+}
+
+.tab-btn:hover {
+  color: var(--text-main);
+}
+
+.tab-btn.active {
+  color: var(--text-main);
+  font-weight: 600;
+  border-bottom-color: #ffffff;
+}
+
+/* ── Notifications Toasts Monochrome ── */
+.toast-alert {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #000000;
+  border: 1px solid #333333;
+  color: var(--text-main);
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  font-size: 12.5px;
+  z-index: 1000;
+  transform: translateY(10px);
+  opacity: 0;
+  transition: transform 100ms ease, opacity 100ms ease;
+}
+
+.toast-alert.visible {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* ── Footer ── */
+.footer {
+  border-top: 1px solid var(--border);
+  padding: 32px 24px;
+  margin-top: auto;
+  font-size: 12px;
+  color: var(--text-dim);
+  background: var(--bg);
+}
+
+.footer-inner {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.footer-links {
+  display: flex;
+  gap: 16px;
+}
+
+.footer-links a {
+  color: var(--text-muted);
+}
+
+.footer-links a:hover {
+  color: var(--text-main);
+}
+
+@media (max-width: 800px) {
+  .navbar { padding: 10px 16px; }
+  .nav-links { display: none; }
+  .dash-main { padding: 20px 16px; }
+  .container { padding: 0 16px; }
+}
