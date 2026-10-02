@@ -4,7 +4,8 @@
     <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
       <div>
         <div class="card-title" style="display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; color: #ffffff;">
-          <span>💬</span> Messages & Taux de Confiance
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span>Messages & Taux de Confiance</span>
         </div>
         <div class="card-desc" style="max-width: 720px; font-size: 12.5px; color: var(--text-muted); margin-top: 4px;">
           Chaque message suspect (menace « je vais te raid », flood, insulte, phishing) est consigné ici.
@@ -13,8 +14,9 @@
       </div>
 
       <div style="display: flex; gap: 8px; align-items: center;">
-        <button class="btn btn-secondary btn-sm" onclick="htmx.ajax('GET', '/dashboard/{{ guild_id }}/tab/messages-confidence', { target: '#tab-content', swap: 'innerHTML' })">
-          🔄 Actualiser la liste
+        <button class="btn btn-secondary btn-sm" onclick="htmx.ajax('GET', '/dashboard/{{ guild_id }}/tab/messages-confidence', { target: '#tab-content', swap: 'innerHTML' })" style="display: inline-flex; align-items: center; gap: 6px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          <span>Actualiser la liste</span>
         </button>
       </div>
     </div>
@@ -30,7 +32,7 @@
                value="je vais te raid"
                style="flex: 1; background: rgba(0, 0, 0, 0.35); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; color: #fff; font-size: 13px;">
         <button class="btn btn-primary btn-sm" onclick="runLiveConfidenceTest()">
-          ⚡ Analyser
+          Tester
         </button>
       </div>
 
@@ -117,25 +119,25 @@
                   <!-- 100% : Raid Certain (Bannir ou Timeout 1h) -->
                   <button class="btn-conf btn-conf-100" title="Raid certain : sanctionner immédiatement"
                           onclick="rateConfidence({{ guild_id }}, '{{ m.id }}', '{{ m.user_id }}', 1.0, 'ban')">
-                    🚨 100% Raid
+                    100% Raid
                   </button>
 
                   <!-- 70% : Douteux (Timeout 10m de précaution) -->
                   <button class="btn-conf btn-conf-70" title="Comportement suspect : timeout 10m"
                           onclick="rateConfidence({{ guild_id }}, '{{ m.id }}', '{{ m.user_id }}', 0.7, 'timeout_10m')">
-                    ⚠️ 70% Suspect
+                    70% Suspect
                   </button>
 
                   <!-- 30% : Surveillance -->
                   <button class="btn-conf btn-conf-30" title="Risque faible : garder en observation"
                           onclick="rateConfidence({{ guild_id }}, '{{ m.id }}', '{{ m.user_id }}', 0.3, 'watch')">
-                    ❓ 30% Faible
+                    30% Faible
                   </button>
 
                   <!-- 0% : Faux Positif (Démuter immédiatement) -->
                   <button class="btn-conf btn-conf-0" title="Faux positif : annuler la sanction et démuter"
                           onclick="rateConfidence({{ guild_id }}, '{{ m.id }}', '{{ m.user_id }}', 0.0, 'untimeout')">
-                    ✅ 0% Safe
+                    0% Safe
                   </button>
 
                 </div>
@@ -216,9 +218,9 @@
           badge.className = `status-pill ${score >= 0.85 ? 'status-danger' : (score >= 0.50 ? 'status-warning' : 'status-protected')}`;
         }
 
-        const actionText = action === 'ban' ? '🔨 Membre banni' : (
-          action === 'timeout_10m' ? '⏳ Membre timeout 10m' : (
-            action === 'untimeout' ? '🔊 Silence levé (Faux positif validé)' : 'Évaluation enregistrée'
+        const actionText = action === 'ban' ? 'Membre banni' : (
+          action === 'timeout_10m' ? 'Membre timeout 10m' : (
+            action === 'untimeout' ? 'Silence levé (Faux positif validé)' : 'Évaluation enregistrée'
           )
         );
         if (typeof showToast === 'function') {

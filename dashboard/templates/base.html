@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=20261002_soc_v2">
+  <link rel="stylesheet" href="/static/style.css?v=20261002_keeper_clean_v10">
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
@@ -33,9 +33,10 @@
     </div>
 
     <div class="nav-actions">
-      <!-- Bouton Son Cyber Alert -->
-      <button id="audio-toggle-btn" class="btn btn-secondary btn-sm" onclick="toggleAudioAlerts()" title="Activer / Couper les alertes sonores de détection">
-        🔊 Son : ON
+      <!-- Bouton Son Cyber Alert (Sans emoji) -->
+      <button id="audio-toggle-btn" class="btn btn-secondary btn-sm" onclick="toggleAudioAlerts()" title="Activer / Couper les alertes sonores de détection" style="display: inline-flex; align-items: center; gap: 6px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        <span>Son : ON</span>
       </button>
 
       {% if user %}

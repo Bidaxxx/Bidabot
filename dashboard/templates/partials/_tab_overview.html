@@ -17,11 +17,11 @@
     <div style="display: flex; gap: 8px; align-items: center;">
       {% if lockdown_active %}
         <button class="btn btn-secondary btn-sm" onclick="toggleLockdown({{ guild_id }}, false)">
-          🔓 Lever le verrouillage
+          Lever le verrouillage
         </button>
       {% else %}
         <button class="btn btn-danger btn-sm" onclick="toggleLockdown({{ guild_id }}, true)">
-          🔒 Verrouiller le serveur
+          Verrouiller le serveur
         </button>
       {% endif %}
 
@@ -34,7 +34,7 @@
       </button>
 
       <a href="/api/guild/{{ guild_id }}/report.pdf" target="_blank" class="btn btn-secondary btn-sm">
-        📑 Rapport PDF
+        Rapport PDF
       </a>
     </div>
   </div>
@@ -80,7 +80,7 @@
 
   </div>
 
-  <!-- 📈 Graphique d'Activité Réelle du Serveur (Dernières 24h) -->
+  <!-- Graphique d'Activité Réelle du Serveur (Dernières 24h) -->
   <div class="card" style="margin-bottom: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
       <div>
@@ -101,7 +101,7 @@
     </div>
   </div>
 
-  <!-- 📜 Flux des Événements & Interventions en Direct (Style Monochrome) -->
+  <!-- Flux des Événements & Interventions en Direct (Style Monochrome) -->
   <div class="card" style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
       <div style="display: flex; align-items: center; gap: 8px;">
@@ -113,7 +113,7 @@
 
       <div style="display: flex; gap: 6px;">
         <button class="btn btn-secondary btn-sm" onclick="pollSocEvents({{ guild_id }})" style="font-size: 11px; padding: 3px 8px;">
-          🔄 Actualiser
+          Actualiser
         </button>
         <button class="btn btn-secondary btn-sm" onclick="clearSocTerminal()" style="font-size: 11px; padding: 3px 8px;">
           Effacer

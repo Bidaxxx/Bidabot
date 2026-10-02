@@ -14,11 +14,12 @@
     </div>
 
     <div style="display: flex; gap: 8px; align-items: center;">
-      <button class="btn btn-secondary btn-sm" onclick="htmx.ajax('GET', '/dashboard/{{ guild_id }}/tab/protections', { target: '#tab-content', swap: 'innerHTML' })">
-        🔄 Actualiser
+      <button class="btn btn-secondary btn-sm" onclick="htmx.ajax('GET', '/dashboard/{{ guild_id }}/tab/protections', { target: '#tab-content', swap: 'innerHTML' })" style="display: inline-flex; align-items: center; gap: 6px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        <span>Actualiser</span>
       </button>
       <button class="btn btn-primary btn-sm" onclick="quickApplyRecommended({{ guild_id }})">
-        🪄 Configuration recommandée
+        Configuration recommandée
       </button>
     </div>
   </div>
@@ -39,7 +40,7 @@
 
     <div style="position: relative; width: 240px;">
       <input type="text" id="protectionSearchInput" onkeyup="searchProtections(this.value)" 
-             placeholder="🔍 Spam, liens, rôles..." 
+             placeholder="Rechercher spam, liens, rôles..." 
              style="width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 12px; font-size: 12px; color: var(--text-main); outline: none;">
     </div>
   </div>
@@ -320,13 +321,13 @@
           <span style="font-size: 12px; color: var(--text-muted);">Taux de confiance requis pour déclencher la sanction :</span>
           <div class="conf-btn-group">
             <button class="btn-conf btn-conf-100 active" onclick="setProtectionConfidence(90, this)">
-              <span>🚨</span> Haute (90%+) &bull; Menace certaine
+              Haute (90%+) &bull; Menace certaine
             </button>
             <button class="btn-conf btn-conf-70" onclick="setProtectionConfidence(70, this)">
-              <span>⚠️</span> Moyenne (70%+) &bull; Recommandé
+              Moyenne (70%+) &bull; Recommandé
             </button>
             <button class="btn-conf btn-conf-30" onclick="setProtectionConfidence(50, this)">
-              <span>🛡️</span> Agressive (50%+) &bull; Tout suspect
+              Agressive (50%+) &bull; Tout suspect
             </button>
           </div>
         </div>
@@ -345,11 +346,11 @@
             <span style="font-size: 13px; color: var(--text-muted);">Sanction immédiate :</span>
             <select id="sanctionSelect" onchange="autoSaveProtection()"
                     style="background: rgba(0,0,0,0.35); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 12px; color: #fff; font-size: 13px; outline: none;">
-              <option value="ban" selected>🔨 Bannir définitivement</option>
-              <option value="timeout_1h">⏳ Timeout 1 heure</option>
-              <option value="timeout_10m">⏳ Timeout 10 minutes</option>
-              <option value="kick">👢 Expulser du serveur</option>
-              <option value="quarantine">☣️ Mettre en Quarantaine</option>
+              <option value="ban" selected>Bannir définitivement</option>
+              <option value="timeout_1h">Timeout 1 heure</option>
+              <option value="timeout_10m">Timeout 10 minutes</option>
+              <option value="kick">Expulser du serveur</option>
+              <option value="quarantine">Mettre en Quarantaine</option>
             </select>
           </div>
 
