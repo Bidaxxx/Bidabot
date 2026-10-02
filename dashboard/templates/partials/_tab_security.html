@@ -1,7 +1,62 @@
 <div class="security-section">
-  <div class="card">
-    <div class="card-title">Filtres de Modération & Sécurité Active</div>
-    <div class="card-desc">
+  <!-- Configuration du Salon d'Alertes Staff en direct -->
+  <div class="card" style="margin-bottom: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; margin-bottom: 16px;">
+      <div>
+        <div style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); margin-bottom: 4px;">
+          NOTIFICATIONS &bull; STAFF CHANNEL
+        </div>
+        <div class="card-title" style="font-size: 18px; font-weight: 700; color: #ffffff;">
+          Salon d'Alertes Staff en Direct
+        </div>
+        <div class="card-desc" style="max-width: 680px; font-size: 12.5px; color: var(--text-muted); margin-top: 4px;">
+          Définissez le salon Discord privé où le Bot publie les embeds de sécurité en temps réel avec les boutons d'action rapide ([Bannir], [Quarantaine], [Faux positif]).
+        </div>
+      </div>
+      <div>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="testStaffAlert({{ guild_id }})" style="display: inline-flex; align-items: center; gap: 6px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <span>Tester l'envoi d'alerte</span>
+        </button>
+      </div>
+    </div>
+
+    <form onsubmit="saveAlertsConfig(event, {{ guild_id }})" style="display: flex; flex-direction: column; gap: 14px;">
+      <div style="display: flex; gap: 14px; flex-wrap: wrap; align-items: center;">
+        <div style="flex: 1; min-width: 250px;">
+          <label style="font-size: 11px; text-transform: uppercase; font-family: var(--font-mono); color: var(--text-dim); display: block; margin-bottom: 6px;">
+            Salon textuel des alertes
+          </label>
+          <select id="dashboardAlertsChannelSelect" style="width: 100%; background: #12141d; border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; color: #fff; font-size: 13px;">
+            <option value="">-- Par défaut (#bidabot-alerts automatique) --</option>
+            {% for ch in text_channels %}
+              <option value="{{ ch.id }}" {% if guild.dashboard_alerts_channel_id and guild.dashboard_alerts_channel_id|string == ch.id|string %}selected{% endif %}>
+                # {{ ch.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 10px; margin-top: 20px;">
+          <label class="switch">
+            <input type="checkbox" id="adminAlertsDmSwitch" {% if guild.admin_alerts_dm is not defined or guild.admin_alerts_dm %}checked{% endif %}>
+            <span class="slider"></span>
+          </label>
+          <span style="font-size: 12.5px; color: #cbd5e1;">Alerte DM aux Administrateurs en cas de crise critique</span>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: 6px;">
+        <button type="submit" class="btn btn-primary btn-sm">
+          Enregistrer le salon d'alertes
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card" style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px;">
+    <div class="card-title" style="font-size: 18px; font-weight: 700; color: #ffffff;">Filtres de Modération & Sécurité Active</div>
+    <div class="card-desc" style="font-size: 12.5px; color: var(--text-muted); margin-top: 4px;">
       Activez ou désactivez les moteurs heuristiques en temps réel.
     </div>
 
@@ -94,7 +149,7 @@
       </div>
 
       <div style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
-        <span style="font-size: 11px; color: var(--text-dim);">⚡ Modification en temps réel activée (sauvegarde instantanée sur bascule).</span>
+        <span style="font-size: 11px; color: var(--text-dim);">Modification en temps réel (sauvegarde instantanée sur bascule).</span>
         <button type="submit" class="btn btn-primary btn-sm">
           Tout sauvegarder
         </button>
@@ -117,14 +172,14 @@
         body: fd
       });
       if (res.ok) {
-        showToast(isChecked ? `🟢 ${label} activé (temps réel)` : `⚪ ${label} désactivé`);
+        if (typeof showToast === 'function') showToast(isChecked ? `${label} activé` : `${label} désactivé`);
       } else {
         el.checked = !isChecked;
-        showToast("❌ Erreur de sauvegarde");
+        if (typeof showToast === 'function') showToast("Erreur de sauvegarde");
       }
     } catch(err) {
       el.checked = !isChecked;
-      showToast("❌ Erreur réseau");
+      if (typeof showToast === 'function') showToast("Erreur réseau");
     }
   }
 
@@ -134,9 +189,38 @@
     const formData = new FormData(form);
     const res = await fetch(`/api/guild/${guildId}/settings`, { method: 'POST', body: formData });
     if (res.ok) {
-      showToast("Filtres de sécurité actualisés.");
+      if (typeof showToast === 'function') showToast("Filtres de sécurité actualisés.");
     } else {
-      showToast("Erreur lors de la sauvegarde.");
+      if (typeof showToast === 'function') showToast("Erreur lors de la sauvegarde.");
+    }
+  }
+
+  async function saveAlertsConfig(e, guildId) {
+    e.preventDefault();
+    const chSelect = document.getElementById('dashboardAlertsChannelSelect');
+    const dmSwitch = document.getElementById('adminAlertsDmSwitch');
+    const fd = new FormData();
+    fd.append('dashboard_alerts_channel_id', chSelect.value);
+    fd.append('admin_alerts_dm', dmSwitch.checked ? 'true' : 'false');
+
+    const res = await fetch(`/api/guild/${guildId}/alerts/save`, {
+      method: 'POST',
+      body: fd,
+    });
+    if (res.ok) {
+      if (typeof showToast === 'function') showToast("Salon d'alertes staff enregistré.");
+    } else {
+      if (typeof showToast === 'function') showToast("Erreur lors de l'enregistrement.");
+    }
+  }
+
+  async function testStaffAlert(guildId) {
+    const res = await fetch(`/api/guild/${guildId}/alerts/test`, { method: 'POST' });
+    if (res.ok) {
+      if (typeof showToast === 'function') showToast("Alerte de test envoyée dans le salon staff.");
+    } else {
+      if (typeof showToast === 'function') showToast("Erreur lors de l'envoi du test.");
     }
   }
 </script>
+

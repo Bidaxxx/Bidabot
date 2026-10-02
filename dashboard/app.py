@@ -530,11 +530,14 @@ async def tab_antiraid(request: Request, guild_id: int, user: dict = Depends(req
 @app.get("/dashboard/{guild_id}/tab/security", response_class=HTMLResponse)
 async def tab_security(request: Request, guild_id: int, user: dict = Depends(require_auth)):
     guild = await db.get_guild(guild_id) or {}
+    channels = await fetch_discord_guild_channels(guild_id)
+    text_channels = [c for c in channels if c.get("type") in (0, "text")]
 
     return render(request, "partials/_tab_security.html", {
         "request": request,
         "guild_id": guild_id,
         "guild": guild,
+        "text_channels": text_channels,
     })
 
 
@@ -594,6 +597,14 @@ async def tab_backups(request: Request, guild_id: int, user: dict = Depends(requ
         "request": request,
         "guild_id": guild_id,
         "snapshots": snapshots,
+    })
+
+
+@app.get("/dashboard/{guild_id}/tab/console", response_class=HTMLResponse)
+async def tab_console(request: Request, guild_id: int, user: dict = Depends(require_auth)):
+    return render(request, "partials/_tab_console.html", {
+        "request": request,
+        "guild_id": guild_id,
     })
 
 
@@ -1807,3 +1818,72 @@ async def api_simulate_attack(guild_id: int, threat_type: str = Form(...), user:
         "defense_latency_ms": 14,
         "message": f"Attaque simulée '{sim['title']}' neutralisée avec succès par les défenses Sentinel !"
     }
+
+
+# ─── Endpoints Backups & Alertes Staff ─────────────────────────────────
+
+
+@app.post("/api/guild/{guild_id}/backup/create")
+async def api_backup_create(
+    guild_id: int,
+    label: str = Form("Snapshot-Dashboard"),
+    user: dict = Depends(require_auth),
+):
+    """Déclenche la capture d'un snapshot de la structure du serveur Discord."""
+    await dispatch_bot_action("create_snapshot", guild_id, label=label, user_id=user["id"])
+    return {"status": "ok", "message": "Capture de la structure déclenchée"}
+
+
+@app.post("/api/guild/{guild_id}/backup/restore/{snapshot_id}")
+async def api_backup_restore(
+    guild_id: int,
+    snapshot_id: int,
+    user: dict = Depends(require_auth),
+):
+    """Déclenche la restauration chirurgicale d'un snapshot."""
+    await dispatch_bot_action("restore_snapshot", guild_id, snapshot_id=snapshot_id, user_id=user["id"])
+    return {"status": "ok", "message": "Restauration structurelle déclenchée"}
+
+
+@app.post("/api/guild/{guild_id}/backup/delete/{snapshot_id}")
+async def api_backup_delete(
+    guild_id: int,
+    snapshot_id: int,
+    user: dict = Depends(require_auth),
+):
+    """Supprime un snapshot d'arborescence."""
+    ok = await db.delete_guild_snapshot(snapshot_id, guild_id)
+    return {"status": "ok" if ok else "error"}
+
+
+@app.post("/api/guild/{guild_id}/alerts/save")
+async def api_alerts_save(
+    guild_id: int,
+    request: Request,
+    user: dict = Depends(require_auth),
+):
+    """Enregistre le salon de logs d'alertes staff et les préférences DM."""
+    form = await request.form()
+    alerts_ch = form.get("dashboard_alerts_channel_id")
+    admin_dm = (form.get("admin_alerts_dm") == "true")
+    ch_id = int(alerts_ch) if alerts_ch and str(alerts_ch).isdigit() else None
+
+    if db.pool:
+        await db.pool.execute(
+            """UPDATE guilds
+               SET dashboard_alerts_channel_id = $1, admin_alerts_dm = $2
+               WHERE guild_id = $3""",
+            ch_id, admin_dm, guild_id
+        )
+    return {"status": "ok", "channel_id": ch_id, "admin_alerts_dm": admin_dm}
+
+
+@app.post("/api/guild/{guild_id}/alerts/test")
+async def api_alerts_test(
+    guild_id: int,
+    user: dict = Depends(require_auth),
+):
+    """Envoie une notification d'alerte de test dans le salon staff avec boutons interactifs."""
+    await dispatch_bot_action("test_alert", guild_id, user_id=user["id"])
+    return {"status": "ok", "message": "Alerte de test envoyée"}
+

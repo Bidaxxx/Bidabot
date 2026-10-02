@@ -11,10 +11,12 @@
         X-Frame-Options "SAMEORIGIN"
         Referrer-Policy "strict-origin-when-cross-origin"
     }
-    reverse_proxy dashboard:8002
+    reverse_proxy dashboard:8002 {
+        header_up X-Real-IP {http.request.header.Cf-Connecting-Ip}
+    }
 }
 
-# 2. Nom de domaine personnalisé si configuré dans le fichier .env (ex: DOMAIN=bidabot.fr)
+# 2. Nom de domaine personnalisé (ex: DOMAIN=bidabot.fr) — 100% compatible Cloudflare Proxy & SSL Strict
 {$DOMAIN:bidabot.local} {
     encode gzip zstd
     header {
@@ -23,7 +25,9 @@
         X-Frame-Options "SAMEORIGIN"
         Referrer-Policy "strict-origin-when-cross-origin"
     }
-    reverse_proxy dashboard:8002
+    reverse_proxy dashboard:8002 {
+        header_up X-Real-IP {http.request.header.Cf-Connecting-Ip}
+    }
 }
 
 # 3. Accès direct en HTTP sur l'adresse IP : redirection automatique et permanente vers le HTTPS officiel

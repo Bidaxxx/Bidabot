@@ -415,6 +415,50 @@ async def _handle_web_action(payload: dict):
             deleted = await ch.purge(limit=count)
             await _append_evidence(guild.id, "channel_purged", {"channel_id": ch.id, "deleted": len(deleted)})
             logger.info("Purge de %d messages sur #%s depuis le Dashboard Web", len(deleted), ch.name)
+    elif action == "create_snapshot":
+        label = payload.get("label", "Dashboard-Web")
+        snap_data = await snapshot.capture_guild_snapshot(guild, label=label)
+        ch_count = snap_data["summary"]["text_channels_count"] + snap_data["summary"]["voice_channels_count"]
+        roles_count = snap_data["summary"]["roles_count"]
+        snap_id = await db.save_guild_snapshot(
+            guild.id,
+            label,
+            snap_data,
+            channels_count=ch_count,
+            roles_count=roles_count,
+        )
+        await _append_evidence(guild.id, "guild_snapshot_created", {
+            "snapshot_id": snap_id,
+            "label": label,
+            "channels_count": ch_count,
+            "roles_count": roles_count,
+        })
+        logger.info("Snapshot de sauvegarde #%d ('%s') créé pour %s", snap_id, label, guild.name)
+    elif action == "restore_snapshot":
+        snapshot_id = int(payload.get("snapshot_id", 0))
+        snap = await db.get_guild_snapshot_by_id(snapshot_id, guild.id)
+        if snap and "snapshot_data" in snap:
+            stats = await snapshot.restore_guild_snapshot(guild, snap["snapshot_data"])
+            await _append_evidence(guild.id, "guild_snapshot_restored", {"snapshot_id": snapshot_id, "stats": stats})
+            logger.info("Snapshot #%d restauré sur %s : %s", snapshot_id, guild.name, stats)
+    elif action == "test_alert":
+        target_uid = bot.user.id if bot.user else None
+        await guild_dashboard.send_alert(
+            guild,
+            title="Notification Staff de Sécurité (Test)",
+            description="Test de transmission en direct depuis le Dashboard Web. Ce message confirme que le salon de logs staff est opérationnel et que les boutons d'intervention immédiate sont actifs.",
+            color=0x10B981,
+            fields={
+                "Niveau de Sécurité": "Optimal",
+                "Modules Protégés": "23/23 actifs",
+                "Action requise": "Aucune — Test de validation",
+            },
+            target_user_id=target_uid,
+            db=db,
+            append_evidence=_append_evidence,
+            quarantine_module=quarantine,
+        )
+        logger.info("Alerte de test envoyée avec succès pour %s", guild.name)
 
 
 

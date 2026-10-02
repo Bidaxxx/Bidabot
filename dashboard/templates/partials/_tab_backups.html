@@ -1,30 +1,37 @@
 <div class="backups-section">
-  <!-- En-tête Sauvegardes & Snapshots -->
-  <div class="card" style="margin-bottom: 16px;">
+  <!-- En-tête Sauvegardes & Snapshots (Monochrome Keeper) -->
+  <div class="card" style="margin-bottom: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px;">
     <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
       <div>
-        <div class="card-title">Sauvegardes & Disaster Recovery (Anti-Nuke Ultime)</div>
-        <div class="card-desc" style="max-width: 650px;">
+        <div style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); margin-bottom: 4px;">
+          DISASTER RECOVERY &bull; ANTI-NUKE
+        </div>
+        <div class="card-title" style="font-size: 18px; font-weight: 700; color: #ffffff;">
+          Sauvegardes & Restauration Structurelle
+        </div>
+        <div class="card-desc" style="max-width: 680px; font-size: 12.5px; color: var(--text-muted); margin-top: 4px;">
           Capture l'état complet de la structure Discord (salons textuels, vocaux, catégories, hiérarchie des rôles et permissions).
           En cas d'attaque ou de suppression frauduleuse, restaurez l'intégralité du serveur en 1 clic.
         </div>
       </div>
       <div>
-        <button class="btn btn-primary" onclick="showCreateBackupModal()">
-          + Créer un Snapshot
+        <button class="btn btn-primary btn-sm" onclick="showCreateBackupModal()" style="display: inline-flex; align-items: center; gap: 6px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          <span>Créer un Snapshot</span>
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Formulaire / Modal création rapide -->
-  <div id="create-backup-box" class="card" style="display: none; margin-bottom: 16px; border-color: var(--accent); background: rgba(88, 101, 242, 0.05);">
-    <div style="font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">
-      💾 Enregistrer un nouveau Snapshot de Structure
+  <!-- Formulaire de création rapide -->
+  <div id="create-backup-box" class="card" style="display: none; margin-bottom: 16px; border: 1px solid rgba(255, 255, 255, 0.15); background: #12141d; padding: 16px; border-radius: var(--radius-lg);">
+    <div style="font-size: 13px; font-weight: 600; color: #ffffff; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      <span>Enregistrer un nouveau Snapshot de Structure</span>
     </div>
     <form onsubmit="handleCreateBackup(event, {{ guild_id }})" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
       <input type="text" id="backup-label-input" placeholder="Libellé (ex: Avant-Event, Pre-Update, Routine)"
-             style="flex: 1; min-width: 240px; background: rgba(0,0,0,0.4); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; color: var(--text-main); font-size: 13px;" required />
+             style="flex: 1; min-width: 240px; background: rgba(0,0,0,0.5); border: 1px solid var(--border); border-radius: var(--radius); padding: 7px 12px; color: #fff; font-size: 13px;" required />
       <button type="submit" class="btn btn-primary btn-sm">
         Capturer maintenant
       </button>
@@ -35,47 +42,50 @@
   </div>
 
   <!-- Liste des Snapshots Enregistrés -->
-  <div class="card" style="margin-bottom: 16px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-      <div style="font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); font-family: var(--font-mono);">
+  <div class="card" style="margin-bottom: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+      <div style="font-size: 12.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); font-family: var(--font-mono);">
         Historique des Snapshots ({{ snapshots|length }})
       </div>
+      <button class="btn btn-secondary btn-sm" onclick="htmx.ajax('GET', '/dashboard/{{ guild_id }}/tab/backups', { target: '#tab-content', swap: 'innerHTML' })" style="font-size: 11px; padding: 3px 8px;">
+        Actualiser
+      </button>
     </div>
 
     <div style="overflow-x: auto;">
-      <table>
+      <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12.5px;">
         <thead>
-          <tr>
-            <th>ID</th>
-            <th>Libellé</th>
-            <th>Salons</th>
-            <th>Rôles</th>
-            <th>Date d'enregistrement</th>
-            <th style="text-align: right;">Actions</th>
+          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.08); color: var(--text-dim); font-size: 11px; text-transform: uppercase;">
+            <th style="padding: 8px 10px;">ID</th>
+            <th style="padding: 8px 10px;">Libellé</th>
+            <th style="padding: 8px 10px;">Salons</th>
+            <th style="padding: 8px 10px;">Rôles</th>
+            <th style="padding: 8px 10px;">Date d'enregistrement</th>
+            <th style="padding: 8px 10px; text-align: right;">Actions</th>
           </tr>
         </thead>
         <tbody>
           {% for s in snapshots %}
-            <tr>
-              <td style="font-family: var(--font-mono); font-weight: 600; color: var(--text-main);">#{{ s.id }}</td>
-              <td>
-                <span style="font-weight: 500; color: var(--text-main);">{{ s.label }}</span>
+            <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.04);">
+              <td style="padding: 10px; font-family: var(--font-mono); font-weight: 600; color: #ffffff;">#{{ s.id }}</td>
+              <td style="padding: 10px;">
+                <span style="font-weight: 500; color: #ffffff;">{{ s.label }}</span>
               </td>
-              <td style="font-family: var(--font-mono);">
-                <span class="status-pill status-protected">{{ s.channels_count }} salons</span>
+              <td style="padding: 10px; font-family: var(--font-mono);">
+                <span class="status-pill status-protected" style="font-size: 10.5px;">{{ s.channels_count }} salons</span>
               </td>
-              <td style="font-family: var(--font-mono);">
-                <span class="status-pill status-protected">{{ s.roles_count }} rôles</span>
+              <td style="padding: 10px; font-family: var(--font-mono);">
+                <span class="status-pill status-protected" style="font-size: 10.5px;">{{ s.roles_count }} rôles</span>
               </td>
-              <td style="font-size: 12px; color: var(--text-muted); font-family: var(--font-mono);">
+              <td style="padding: 10px; font-size: 12px; color: var(--text-muted); font-family: var(--font-mono);">
                 {{ s.created_at.strftime('%d/%m/%Y %H:%M') if s.created_at else 'Récemment' }}
               </td>
-              <td style="text-align: right; white-space: nowrap;">
-                <button class="btn btn-secondary btn-sm" style="margin-right: 6px;"
+              <td style="padding: 10px; text-align: right; white-space: nowrap;">
+                <button class="btn btn-secondary btn-sm" style="margin-right: 6px; font-size: 11px;"
                         onclick="restoreBackup({{ guild_id }}, {{ s.id }}, '{{ s.label|escape }}')">
-                  🛡️ Restaurer
+                  Restaurer
                 </button>
-                <button class="btn btn-danger btn-sm"
+                <button class="btn btn-danger btn-sm" style="font-size: 11px;"
                         onclick="deleteBackup({{ guild_id }}, {{ s.id }})">
                   Supprimer
                 </button>
@@ -83,10 +93,9 @@
             </tr>
           {% else %}
             <tr>
-              <td colspan="6" style="text-align: center; color: var(--text-dim); padding: 32px 0;">
-                <div style="font-size: 24px; margin-bottom: 8px;">📂</div>
-                <div>Aucun snapshot enregistré pour le moment.</div>
-                <div style="font-size: 12px; margin-top: 4px; color: var(--text-dim);">
+              <td colspan="6" style="text-align: center; color: var(--text-dim); padding: 40px 0;">
+                <div style="font-size: 13px; color: #94a3b8; font-weight: 500;">Aucun snapshot enregistré pour le moment.</div>
+                <div style="font-size: 11.5px; margin-top: 4px; color: var(--text-dim);">
                   Créez votre première sauvegarde pour prémunir le serveur contre tout raid ou nuke.
                 </div>
               </td>
@@ -97,16 +106,16 @@
     </div>
   </div>
 
-  <!-- Carte informative sécurité -->
-  <div class="card" style="background: rgba(255, 255, 255, 0.02);">
-    <div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-main); margin-bottom: 6px;">
-      Comment fonctionne la Restauration Anti-Nuke ?
+  <!-- Carte informative sécurité (Monochrome pur) -->
+  <div class="card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px;">
+    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); margin-bottom: 8px;">
+      FONCTIONNEMENT DE LA RESTAURATION ANTI-NUKE
     </div>
-    <ul style="color: var(--text-muted); font-size: 12.5px; line-height: 1.6; padding-left: 16px; margin: 0;">
+    <ul style="color: var(--text-muted); font-size: 12px; line-height: 1.7; padding-left: 18px; margin: 0;">
       <li><strong>Non-destructif :</strong> La restauration ne supprime aucun contenu existant ; elle recrée uniquement ce qui a disparu.</li>
       <li><strong>Chirurgical :</strong> Les rôles, couleurs, flags et permissions exactes sont rétablis avant les salons.</li>
-      <li><strong>Arborescence intacte :</strong> Les catégories et salons (textuels et vocaux avec bitrates et limites d'utilisateurs) sont réassignés à leurs positions d'origine.</li>
-      <li><strong>Commandes Discord :</strong> Vous pouvez également gérer vos snapshots directement sur Discord via <code class="mono">/bidabot backup create</code> et <code class="mono">/bidabot backup restore &lt;id&gt;</code>.</li>
+      <li><strong>Arborescence préservée :</strong> Les catégories et salons (textuels et vocaux avec bitrates et limites d'utilisateurs) sont réassignés à leurs positions d'origine.</li>
+      <li><strong>Commandes Discord :</strong> Vous pouvez également gérer vos snapshots directement sur Discord via <code style="font-family: var(--font-mono); color: #fff; background: rgba(255,255,255,0.06); padding: 2px 5px; border-radius: 4px;">/sentinel backup create</code> et <code style="font-family: var(--font-mono); color: #fff; background: rgba(255,255,255,0.06); padding: 2px 5px; border-radius: 4px;">/sentinel backup restore &lt;id&gt;</code>.</li>
     </ul>
   </div>
 </div>
@@ -134,12 +143,12 @@
     });
 
     if (res.ok) {
-      showToast("Snapshot de sauvegarde en cours de création...");
+      if (typeof showToast === 'function') showToast("Snapshot de sauvegarde en cours de création...");
       setTimeout(() => {
         htmx.ajax('GET', `/dashboard/${guildId}/tab/backups`, { target: '#tab-content', swap: 'innerHTML' });
       }, 700);
     } else {
-      showToast("Erreur lors de la création du snapshot.");
+      if (typeof showToast === 'function') showToast("Erreur lors de la création du snapshot.");
     }
   }
 
@@ -150,12 +159,12 @@
 
     const res = await fetch(`/api/guild/${guildId}/backup/restore/${snapshotId}`, { method: 'POST' });
     if (res.ok) {
-      showToast("Restauration du serveur déclenchée.");
+      if (typeof showToast === 'function') showToast("Restauration du serveur déclenchée.");
       setTimeout(() => {
         htmx.ajax('GET', `/dashboard/${guildId}/tab/backups`, { target: '#tab-content', swap: 'innerHTML' });
       }, 1000);
     } else {
-      showToast("Erreur lors de la restauration du snapshot.");
+      if (typeof showToast === 'function') showToast("Erreur lors de la restauration du snapshot.");
     }
   }
 
@@ -164,7 +173,7 @@
 
     const res = await fetch(`/api/guild/${guildId}/backup/delete/${snapshotId}`, { method: 'POST' });
     if (res.ok) {
-      showToast("Snapshot supprimé.");
+      if (typeof showToast === 'function') showToast("Snapshot supprimé.");
       setTimeout(() => {
         htmx.ajax('GET', `/dashboard/${guildId}/tab/backups`, { target: '#tab-content', swap: 'innerHTML' });
       }, 300);

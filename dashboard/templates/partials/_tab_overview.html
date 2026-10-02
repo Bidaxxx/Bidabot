@@ -213,4 +213,54 @@
 
   // Initialisation immédiate du graphique monochrome
   setTimeout(() => loadRealActivityChart({{ guild_id }}), 80);
+
+  let socIntervalId = null;
+
+  async function pollSocEvents(guildId) {
+    const term = document.getElementById('soc-terminal-logs');
+    if (!term) return;
+
+    try {
+      const res = await fetch(`/api/guild/${guildId}/soc-events`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.events || data.events.length === 0) {
+        term.innerHTML = '<div style="color: var(--text-dim); font-size: 11px;">[SYNCHRONISÉ] Aucun événement récent enregistré.</div>';
+        return;
+      }
+
+      term.innerHTML = data.events.slice(0, 20).map(ev => {
+        let col = '#94a3b8';
+        if (ev.level === 'critical') col = '#f87171';
+        else if (ev.level === 'warning') col = '#fbbf24';
+        else if (ev.level === 'success') col = '#34d399';
+
+        return `<div style="display: flex; gap: 8px; align-items: baseline;">
+          <span style="color: #64748b; font-size: 10px;">[${ev.time}]</span>
+          <span style="color: ${col}; font-weight: 600; font-size: 10.5px;">${ev.badge}</span>
+          <span style="color: #e2e8f0; font-size: 11.5px; word-break: break-word;">${ev.message}</span>
+        </div>`;
+      }).join('');
+    } catch (e) {
+      console.error("Erreur polling SOC:", e);
+    }
+  }
+
+  function clearSocTerminal() {
+    const term = document.getElementById('soc-terminal-logs');
+    if (term) {
+      term.innerHTML = '<div style="color: var(--text-dim); font-size: 11px;">[Terminal effacé. En attente de nouveaux événements...]</div>';
+    }
+  }
+
+  // Démarrage du flux SOC en temps réel (toutes les 4 secondes)
+  pollSocEvents({{ guild_id }});
+  if (window._socGlobalTimer) clearInterval(window._socGlobalTimer);
+  window._socGlobalTimer = setInterval(() => {
+    if (document.getElementById('soc-terminal-logs')) {
+      pollSocEvents({{ guild_id }});
+    } else {
+      clearInterval(window._socGlobalTimer);
+    }
+  }, 4000);
 </script>
