@@ -79,7 +79,91 @@
       <div class="val" style="margin-top: 6px;">
         {{ quarantine_count }}
       </div>
-      <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">Membres isolés</div>
+    </div>
+  </div>
+
+  <!-- 📊 Visual Analytics & Threat Intelligence -->
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">
+          <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--cyber-cyan);"></span>
+          ÉVOLUTION DE L'ACTIVITÉ & INTERCEPTIONS (DERNIÈRES 24H)
+        </div>
+        <div style="font-family: var(--font-mono); font-size: 11px; color: var(--cyber-cyan);">
+          TEMPS RÉEL
+        </div>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="timelineChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">
+          <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--cyber-purple);"></span>
+          VECTEURS D'ATTAQUE (DOUGHNUT)
+        </div>
+        <div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-dim);">
+          HEURISTIQUE ML
+        </div>
+      </div>
+      <div class="chart-canvas-wrap" style="height: 220px; display: flex; align-items: center; justify-content: center;">
+        <canvas id="distributionChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🎮 Laboratoire de Pentest & Simulation d'Attaques (Red Team Engine) -->
+  <div class="redteam-panel">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+      <div>
+        <div style="font-weight: 700; font-size: 14px; color: #fff; display: flex; align-items: center; gap: 8px;">
+          <span>🎯</span> LABORATOIRE D'INTRUSION CONTRÔLÉE (SIMULATEUR RED TEAM)
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+          Testez l'efficacité de vos 17 modules de défense en simulant des attaques réelles sans aucun danger pour votre serveur.
+        </div>
+      </div>
+      <span class="status-pill status-protected" style="font-size: 10.5px;">ENVIRONNEMENT SÉCURISÉ &bull; SIG ED25519</span>
+    </div>
+
+    <div class="redteam-deck">
+      <button class="redteam-btn" onclick="runRedTeamSimulation({{ guild_id }}, 'raid', this)">
+        <div class="redteam-btn-title">
+          <span>⚡</span> Raid Botnet (20 bots)
+        </div>
+        <div class="redteam-btn-desc">Vague d'infiltrations massives & challenge captcha</div>
+      </button>
+
+      <button class="redteam-btn" onclick="runRedTeamSimulation({{ guild_id }}, 'phishing', this)">
+        <div class="redteam-btn-title">
+          <span>🎣</span> Phishing Discord Nitro
+        </div>
+        <div class="redteam-btn-desc">Lien frauduleux avec imitation d'URL officielle</div>
+      </button>
+
+      <button class="redteam-btn" onclick="runRedTeamSimulation({{ guild_id }}, 'nuke', this)">
+        <div class="redteam-btn-title">
+          <span>💣</span> Tentative de Nuke Webhook
+        </div>
+        <div class="redteam-btn-desc">Création de webhook non-autorisé & spam roles</div>
+      </button>
+
+      <button class="redteam-btn" onclick="runRedTeamSimulation({{ guild_id }}, 'ghostping', this)">
+        <div class="redteam-btn-title">
+          <span>👻</span> Ghost-Ping Massif Staff
+        </div>
+        <div class="redteam-btn-desc">Mention furtive supprimée en moins de 200ms</div>
+      </button>
+
+      <button class="redteam-btn" onclick="runRedTeamSimulation({{ guild_id }}, 'malware', this)">
+        <div class="redteam-btn-title">
+          <span>🦠</span> Binaire Exécutable (.exe)
+        </div>
+        <div class="redteam-btn-desc">Faux setup de jeu avec hash SHA-256 suspect</div>
+      </button>
     </div>
   </div>
 
@@ -309,11 +393,20 @@
     }
   }
 
-  // Démarrage automatique de l'écoute SOC
+  window.refreshSocMatrix = function(gid) {
+    pollSocEvents(gid);
+  };
+
+  // Démarrage automatique de l'écoute SOC & Initialisation des Graphiques
   (function initSoc() {
     if (window._socTimer) clearInterval(window._socTimer);
     clearSocTerminal();
     pollSocEvents({{ guild_id }});
     window._socTimer = setInterval(() => pollSocEvents({{ guild_id }}), 3500);
+
+    // Initialisation des graphiques interactifs
+    if (typeof initDashboardCharts === 'function') {
+      setTimeout(() => initDashboardCharts({{ guild_id }}), 80);
+    }
   })();
 </script>

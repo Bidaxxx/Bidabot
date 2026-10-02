@@ -3,75 +3,45 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BIDABOT — Sécurité Discord & Forensique</title>
-  <meta name="description" content="Plateforme SaaS de sécurité pour infrastructures Discord. Anti-nuke, war rooms, analyse vectorielle et chaîne forensique signée Ed25519.">
+  <title>BIDABOT — Cyber SOC & Forensique Discord</title>
+  <meta name="description" content="Plateforme de cyber-défense et forensique Ed25519 pour serveurs Discord.">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#07090e">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=20261001_mono_v4">
-  <style>
-    /* Monochrome Sombre Absolu — Annulation stricte de tout cache */
-    html, body {
-      background-color: #000000 !important;
-      background-image: none !important;
-      color: #ffffff !important;
-    }
-    .brand-name {
-      background: none !important;
-      -webkit-text-fill-color: #ffffff !important;
-      color: #ffffff !important;
-    }
-    .btn-primary {
-      background: #ffffff !important;
-      color: #000000 !important;
-      box-shadow: none !important;
-      border: 1px solid #ffffff !important;
-      border-radius: 4px !important;
-    }
-    .btn-primary:hover {
-      background: #d4d4d8 !important;
-      color: #000000 !important;
-    }
-    .btn-secondary {
-      background: #000000 !important;
-      color: #ffffff !important;
-      box-shadow: none !important;
-      border: 1px solid #222225 !important;
-      border-radius: 4px !important;
-    }
-    .btn-secondary:hover {
-      background: #141414 !important;
-      border-color: #333333 !important;
-    }
-    * {
-      box-shadow: none !important;
-      text-shadow: none !important;
-    }
-  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css?v=20261002_soc_v2">
   <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
-  <!-- Navigation Minimaliste -->
+  <!-- Navigation Cyber SOC -->
   <nav class="navbar">
     <div style="display: flex; align-items: center; gap: 24px;">
       <a href="/" class="nav-brand">
+        <span class="brand-badge-dot"></span>
         <span class="brand-name">BIDABOT</span>
-        <span class="brand-tag">v2.4 / ED25519</span>
+        <span class="brand-tag">SOC CORE &bull; ED25519</span>
       </a>
       <div class="nav-links">
         <a href="/#features" class="nav-link">Fonctionnalités</a>
         <a href="/#commands" class="nav-link">Commandes</a>
-        <a href="/#scanner" class="nav-link">Simulateur</a>
+        <a href="/#scanner" class="nav-link">Scanner ML</a>
         <a href="/dashboard" class="nav-link">Serveurs</a>
       </div>
     </div>
 
     <div class="nav-actions">
+      <!-- Bouton Son Cyber Alert -->
+      <button id="audio-toggle-btn" class="btn btn-secondary btn-sm" onclick="toggleAudioAlerts()" title="Activer / Couper les alertes sonores de détection">
+        🔊 Son : ON
+      </button>
+
       {% if user %}
-        <div style="display: flex; align-items: center; gap: 8px; padding: 3px 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);">
-          <img src="{{ user.avatar }}" alt="{{ user.username }}" style="width: 18px; height: 18px; border-radius: 2px; object-fit: cover;">
-          <span style="font-size: 12px; font-weight: 500;">{{ user.username }}</span>
+        <div style="display: flex; align-items: center; gap: 8px; padding: 4px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);">
+          <img src="{{ user.avatar }}" alt="{{ user.username }}" style="width: 20px; height: 20px; border-radius: 4px; object-fit: cover;">
+          <span style="font-size: 12px; font-weight: 600; color: var(--text-main);">{{ user.username }}</span>
         </div>
         <a href="/logout" class="btn btn-secondary btn-sm">Déconnexion</a>
       {% else %}
@@ -85,35 +55,26 @@
     {% block content %}{% endblock %}
   </main>
 
+  <!-- Conteneur Flottant de Notifications Toast SOC -->
+  <div id="soc-toast-container" class="soc-toast-container"></div>
+
   <!-- Footer Discret -->
   <footer class="footer">
     <div class="footer-inner">
-      <div>
-        <span style="font-weight: 600; color: var(--text-main);">BIDABOT</span>
-        <span style="margin: 0 8px; color: var(--border);">&bull;</span>
-        <span>Système de défense et chaîne forensique immuable pour Discord</span>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-weight: 700; letter-spacing: -0.01em; color: var(--text-main);">BIDABOT</span>
+        <span style="color: var(--border);">&bull;</span>
+        <span style="color: var(--text-muted);">Architecture Zero-Trust & Forensique Immuable pour Discord</span>
       </div>
       <div class="footer-links">
         <a href="/#commands">Commandes</a>
-        <a href="/dashboard">Console</a>
+        <a href="/dashboard">Console SOC</a>
         <a href="/login">Accès Staff</a>
+        <a href="https://github.com/Bidaxxx/Bidabot" target="_blank" style="color: var(--cyber-cyan);">GitHub</a>
       </div>
     </div>
   </footer>
 
-  <script>
-    function showToast(msg) {
-      const toast = document.createElement('div');
-      toast.className = 'toast-alert';
-      toast.innerText = msg;
-      document.body.appendChild(toast);
-      setTimeout(() => toast.classList.add('visible'), 20);
-      setTimeout(() => {
-        toast.classList.remove('visible');
-        setTimeout(() => toast.remove(), 120);
-      }, 3000);
-    }
-  </script>
-
+  <script src="/static/app.js?v=20261002_soc_v2"></script>
 </body>
 </html>

@@ -87,15 +87,18 @@
                 {% endif %}
               </td>
               <td style="text-align: right;">
-                <div style="display: inline-flex; gap: 4px;">
-                  <button class="btn btn-secondary btn-sm" onclick="quarantineUser({{ guild_id }}, {{ u.discord_id }})">
-                    Quarantaine
+                <div style="display: inline-flex; gap: 4px; align-items: center;">
+                  <button class="btn btn-danger btn-sm" onclick="quickBanUser({{ guild_id }}, {{ u.discord_id }})" title="Bannir définitivement">
+                    🔨 Ban
                   </button>
-                  <button class="btn btn-secondary btn-sm" onclick="labelUser({{ guild_id }}, {{ u.discord_id }}, 'legit')">
-                    Conforme
+                  <button class="btn btn-warning btn-sm" onclick="quickKickUser({{ guild_id }}, {{ u.discord_id }})" title="Expulser">
+                    👢 Kick
                   </button>
-                  <button class="btn btn-danger btn-sm" onclick="labelUser({{ guild_id }}, {{ u.discord_id }}, 'raid')">
-                    Raid
+                  <button class="btn btn-secondary btn-sm" onclick="quickTimeoutUser({{ guild_id }}, {{ u.discord_id }}, 60)" title="Mute 1 heure">
+                    ⏳ Mute
+                  </button>
+                  <button class="btn btn-secondary btn-sm" onclick="quarantineUser({{ guild_id }}, {{ u.discord_id }})" title="Mettre en quarantaine">
+                    ☣️ Isolement
                   </button>
                 </div>
               </td>

@@ -1,0 +1,21 @@
+{
+  "name": "BIDABOT — Sécurité Discord & Forensique",
+  "short_name": "Bidabot SOC",
+  "description": "Plateforme Cyber SOC de protection et modération Discord en temps réel.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#07090e",
+  "theme_color": "#07090e",
+  "icons": [
+    {
+      "src": "https://cdn.discordapp.com/embed/avatars/0.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn.discordapp.com/embed/avatars/0.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

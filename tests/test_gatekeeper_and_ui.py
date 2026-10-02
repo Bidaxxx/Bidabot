@@ -220,3 +220,43 @@ async def test_dashboard_web_moderation_actions():
             reason="Levée de timeout depuis le Dashboard Web", user_id="999",
         )
 
+
+@pytest.mark.asyncio
+async def test_dashboard_soc_analytics_and_simulation():
+    from dashboard.app import api_stats_timeline, api_stats_distribution, api_simulate_attack, pwa_manifest
+
+    user = {"id": "999", "username": "TestStaff", "is_root": True}
+
+    # 1. Test PWA manifest
+    manifest_res = await pwa_manifest()
+    import json
+    data = json.loads(manifest_res.body.decode())
+    assert data["short_name"] == "Bidabot SOC"
+    assert data["display"] == "standalone"
+
+    # 2. Test Timeline Stats
+    timeline = await api_stats_timeline(12345, user=user)
+    assert "labels" in timeline
+    assert len(timeline["labels"]) == 24
+    assert "total" in timeline
+    assert "critical" in timeline
+    assert len(timeline["total"]) == 24
+
+    # 3. Test Threat Distribution
+    dist = await api_stats_distribution(12345, user=user)
+    assert "labels" in dist
+    assert "values" in dist
+    assert "Phishing & Scam" in dist["labels"]
+    assert len(dist["labels"]) == len(dist["values"])
+
+    # 4. Test Attack Simulator (Raid, Phishing, Nuke)
+    with patch("dashboard.app.db.pool", None):
+        sim_raid = await api_simulate_attack(12345, threat_type="raid", user=user)
+        assert sim_raid["status"] == "success"
+        assert sim_raid["threat_type"] == "raid"
+        assert sim_raid["data"]["banned_count"] == 20
+
+        sim_phish = await api_simulate_attack(12345, threat_type="phishing", user=user)
+        assert sim_phish["status"] == "success"
+        assert sim_phish["data"]["score"] == 0.96
+
