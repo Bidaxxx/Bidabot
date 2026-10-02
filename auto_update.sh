@@ -9,6 +9,7 @@
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$REPO_DIR"
 
+sudo chmod 666 /var/run/docker.sock 2>/dev/null || true
 git fetch origin main > /dev/null 2>&1
 
 LOCAL=$(git rev-parse HEAD 2>/dev/null)
