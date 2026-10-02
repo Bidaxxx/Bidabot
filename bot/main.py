@@ -44,6 +44,7 @@ from bot.modules import antispam, antiscam, guild_dashboard
 from bot.modules import similar_names as similar_names_mod
 from bot.modules import quarantine, trust_score, ban_fingerprint, invite_audit
 from bot.modules import antinuke, anti_impersonation, antighostping, voice_antistress, snapshot, antimalware, raid_purge, vulnerability_scanner, red_team_simulator, gatekeeper
+from bot.modules import legitimacy
 from bot.modules.legitimacy import LegitimacyScorer
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
