@@ -433,18 +433,76 @@ async def tab_overview(request: Request, guild_id: int, user: dict = Depends(req
     })
 
 
+@app.get("/dashboard/{guild_id}/tab/protections", response_class=HTMLResponse)
+async def tab_protections(request: Request, guild_id: int, user: dict = Depends(require_auth)):
+    guild = await db.get_guild(guild_id) or {}
+    guild_name = guild.get("name", "Serveur Discord")
+    channels = await fetch_discord_guild_channels(guild_id)
+    return render(request, "partials/_tab_protections.html", {
+        "request": request,
+        "guild_id": guild_id,
+        "guild_name": guild_name,
+        "guild": guild,
+        "channels": channels,
+        "active_count": 14,
+    })
+
+
+@app.get("/dashboard/{guild_id}/tab/messages-confidence", response_class=HTMLResponse)
+async def tab_messages_confidence(request: Request, guild_id: int, user: dict = Depends(require_auth)):
+    raw_events = await db.get_recent_incidents(guild_id, limit=50)
+    messages = []
+    for ev in raw_events:
+        etype = ev.get("event_type", "")
+        raw_data = ev.get("data") or {}
+        if isinstance(raw_data, str):
+            try:
+                import json
+                data = json.loads(raw_data)
+            except Exception:
+                data = {}
+        else:
+            data = dict(raw_data)
+
+        # Filtre les événements pertinents pour l'analyse des messages
+        if any(k in etype for k in ("message", "scam", "raid", "toxic", "spam")):
+            ts = ev.get("ts")
+            t_str = ts.strftime("%H:%M") if ts else "--:--"
+            snippet = data.get("content_snippet") or data.get("content") or "Contenu non consigné"
+            uid = data.get("user_id") or data.get("author_id")
+            uname = data.get("author_name") or f"Membre #{uid}"
+            cname = data.get("channel_name") or str(data.get("channel_id", "salon"))
+            score = float(data.get("score", 0.95 if "raid" in etype else 0.8))
+            messages.append({
+                "id": ev.get("id"),
+                "time": t_str,
+                "user_id": uid,
+                "username": uname,
+                "channel_name": cname,
+                "content": snippet,
+                "score": score,
+                "reasons": data.get("reasons") or [etype],
+            })
+
+    return render(request, "partials/_tab_messages_confidence.html", {
+        "request": request,
+        "guild_id": guild_id,
+        "messages": messages,
+    })
+
+
 @app.get("/dashboard/{guild_id}/tab/antiraid", response_class=HTMLResponse)
 async def tab_antiraid(request: Request, guild_id: int, user: dict = Depends(require_auth)):
     guild = await db.get_guild(guild_id) or {}
-    dry_run = await db.get_dry_run(guild_id)
-    lockdown_active = await db.is_lockdown_active(guild_id)
-
-    return render(request, "partials/_tab_antiraid.html", {
+    guild_name = guild.get("name", "Serveur Discord")
+    channels = await fetch_discord_guild_channels(guild_id)
+    return render(request, "partials/_tab_protections.html", {
         "request": request,
         "guild_id": guild_id,
+        "guild_name": guild_name,
         "guild": guild,
-        "dry_run": dry_run,
-        "lockdown_active": lockdown_active,
+        "channels": channels,
+        "active_count": 14,
     })
 
 
@@ -1331,6 +1389,7 @@ async def api_stats_timeline(guild_id: int, user: dict = Depends(require_auth)):
     if db.pool:
         try:
             since = now - datetime.timedelta(hours=24)
+            # Événements de sécurité scellés
             rows = await db.pool.fetch(
                 """SELECT event_type, ts FROM evidence_chain
                    WHERE guild_id = $1 AND ts >= $2
@@ -1344,19 +1403,23 @@ async def api_stats_timeline(guild_id: int, user: dict = Depends(require_auth)):
                 idx = 23 - diff_hours
                 if 0 <= idx < 24:
                     total_counts[idx] += 1
-                    if any(crit in etype for crit in ("critical", "nuke", "malware", "purge", "ban")):
+                    if any(crit in etype for crit in ("critical", "nuke", "malware", "purge", "ban", "raid", "toxic")):
                         critical_counts[idx] += 1
-        except Exception as e:
-            logger.warning("Erreur fetch timeline: %s", e)
 
-    # Si la base est fraîchement installée et a 0 événement, baseline élégante
-    total_sum = sum(total_counts)
-    if total_sum == 0:
-        # Simulation d'activité baseline légère pour démonstration visuelle
-        import random
-        base_curve = [0, 0, 1, 0, 0, 2, 1, 3, 2, 4, 1, 2, 3, 5, 2, 4, 3, 6, 4, 3, 2, 4, 1, 2]
-        total_counts = base_curve
-        critical_counts = [1 if x >= 4 else 0 for x in total_counts]
+            # Arrivées réelles de membres
+            join_rows = await db.pool.fetch(
+                """SELECT ts FROM join_events
+                   WHERE guild_id = $1 AND ts >= $2""",
+                guild_id, since
+            )
+            for r in join_rows:
+                ts = r["ts"]
+                diff_hours = int((now - ts).total_seconds() // 3600)
+                idx = 23 - diff_hours
+                if 0 <= idx < 24:
+                    total_counts[idx] += 1
+        except Exception as e:
+            logger.warning("Erreur fetch timeline réelle: %s", e)
 
     return {
         "labels": labels,
@@ -1364,8 +1427,120 @@ async def api_stats_timeline(guild_id: int, user: dict = Depends(require_auth)):
         "critical": critical_counts,
         "sum_total": sum(total_counts),
         "sum_critical": sum(critical_counts),
-        "peak_hour": labels[total_counts.index(max(total_counts))] if total_counts else "--:--"
+        "peak_hour": labels[total_counts.index(max(total_counts))] if max(total_counts) > 0 else "--:--"
     }
+
+
+@app.post("/api/test-message-confidence")
+async def api_test_message_confidence(request: Request):
+    """Test en direct du taux de confiance d'un message suspect ou ordinaire."""
+    form = await request.form()
+    text = str(form.get("text", "")).strip()
+    if not text:
+        return JSONResponse({"score": 0.0, "confidence_pct": 0, "category": "Vide", "reasons": [], "suggested_action": "Aucune"})
+
+    res = analyze(text)
+    is_raid = any("menace d'attaque" in r or "raid" in r for r in res.reasons)
+    is_toxic = any("propos haineux" in r for r in res.reasons)
+    category = "Menace de Raid Directe" if is_raid else ("Propos Haineux / Insulte" if is_toxic else ("Phishing / Scam" if res.is_scam else "Message Inoffensif"))
+
+    if res.score >= 0.90:
+        suggested = "Bannir immédiatement ou Timeout 1h"
+    elif res.score >= 0.70:
+        suggested = "Timeout 10 minutes de précaution"
+    elif res.score >= 0.40:
+        suggested = "Surveillance du membre"
+    else:
+        suggested = "Aucune sanction (Message légitime)"
+
+    return JSONResponse({
+        "score": res.score,
+        "confidence_pct": round(res.score * 100),
+        "is_threat": res.is_scam,
+        "category": category,
+        "reasons": res.reasons or ["Message normal sans risque."],
+        "suggested_action": suggested,
+    })
+
+
+@app.post("/api/guild/{guild_id}/message/rate-confidence")
+async def api_rate_message_confidence(
+    request: Request,
+    guild_id: int,
+    message_id: str = Form(...),
+    user_id: int = Form(...),
+    confidence: float = Form(...),
+    action: str = Form(...),
+    user: dict = Depends(require_auth)
+):
+    """Permet au modérateur de calibrier le taux de confiance et d'exécuter l'action correspondante."""
+    conf_pct = round(confidence * 100)
+    logger.info("Modérateur %s a noté le message %s (user %s) à %d%% avec action '%s'", user["id"], message_id, user_id, conf_pct, action)
+
+    if action == "ban":
+        await dispatch_bot_action(
+            "ban", guild_id, target_id=user_id,
+            reason=f"Raid certain validé par modérateur (Confiance {conf_pct}%)",
+            user_id=user["id"]
+        )
+    elif action == "timeout_1h":
+        await dispatch_bot_action(
+            "timeout", guild_id, target_id=user_id, duration=3600,
+            reason=f"Timeout appliqué (Confiance {conf_pct}%)",
+            user_id=user["id"]
+        )
+    elif action == "timeout_10m":
+        await dispatch_bot_action(
+            "timeout", guild_id, target_id=user_id, duration=600,
+            reason=f"Timeout de précaution (Confiance {conf_pct}%)",
+            user_id=user["id"]
+        )
+    elif action == "untimeout":
+        await dispatch_bot_action(
+            "timeout", guild_id, target_id=user_id, duration=0,
+            reason="Silence levé (Faux positif validé par modérateur)",
+            user_id=user["id"]
+        )
+
+    # Scelle la décision dans la chaîne forensique
+    await forensics.append_evidence(db, guild_id, "manual_confidence_rating", {
+        "message_id": message_id,
+        "target_user_id": user_id,
+        "confidence_score": confidence,
+        "action_taken": action,
+        "moderator_id": user["id"],
+    })
+
+    return {"status": "ok", "confidence": confidence, "action": action}
+
+
+@app.post("/api/guild/{guild_id}/protection/toggle")
+async def api_toggle_protection(
+    guild_id: int,
+    module_key: str = Form(...),
+    enabled: str = Form(...),
+    user: dict = Depends(require_auth)
+):
+    """Enregistre l'activation ou désactivation d'un module de protection Keeper."""
+    is_on = (enabled.lower() == "true")
+    if cache.client:
+        await cache.client.set(f"prot:{guild_id}:{module_key}", "1" if is_on else "0")
+    return {"status": "ok", "module_key": module_key, "enabled": is_on}
+
+
+@app.post("/api/guild/{guild_id}/protection/save")
+async def api_save_protection(
+    request: Request,
+    guild_id: int,
+    user: dict = Depends(require_auth)
+):
+    """Enregistre les réglages fins (seuil, durée, sanction) d'une protection."""
+    form = await request.form()
+    module_key = str(form.get("module_key", "general"))
+    payload = {k: str(v) for k, v in form.items()}
+    if cache.client:
+        await cache.client.set(f"prot_cfg:{guild_id}:{module_key}", json.dumps(payload))
+    return {"status": "ok", "module_key": module_key}
 
 
 @app.get("/api/guild/{guild_id}/stats/distribution")

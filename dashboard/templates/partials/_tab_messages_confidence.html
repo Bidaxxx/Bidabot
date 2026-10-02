@@ -1,0 +1,232 @@
+<div class="confidence-section">
+  <!-- En-tête -->
+  <div class="card" style="margin-bottom: 16px; border: 1px solid var(--border); background: var(--surface);">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+      <div>
+        <div class="card-title" style="display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; color: #ffffff;">
+          <span>💬</span> Messages & Taux de Confiance
+        </div>
+        <div class="card-desc" style="max-width: 720px; font-size: 12.5px; color: var(--text-muted); margin-top: 4px;">
+          Chaque message suspect (menace « je vais te raid », flood, insulte, phishing) est consigné ici.
+          Vous pouvez ajuster directement le <strong>taux de confiance</strong> avec les boutons 1-clic pour bannir, muter ou lever immédiatement une sanction en cas de faux positif.
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button class="btn btn-secondary btn-sm" onclick="htmx.ajax('GET', '/dashboard/{{ guild_id }}/tab/messages-confidence', { target: '#tab-content', swap: 'innerHTML' })">
+          🔄 Actualiser la liste
+        </button>
+      </div>
+    </div>
+
+    <!-- Testeur / Calibreur de Confiance en Direct -->
+    <div style="margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, 0.05);">
+      <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px; letter-spacing: 0.05em;">
+        TESTER LE TAUX DE CONFIANCE D'UNE PHRASE EN DIRECT
+      </div>
+      <div style="display: flex; gap: 8px; max-width: 700px;">
+        <input type="text" id="liveTestInput" class="form-input" 
+               placeholder="Ex: je vais te raid, on va raid, rejoint mon serveur, ez..." 
+               value="je vais te raid"
+               style="flex: 1; background: rgba(0, 0, 0, 0.35); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; color: #fff; font-size: 13px;">
+        <button class="btn btn-primary btn-sm" onclick="runLiveConfidenceTest()">
+          ⚡ Analyser
+        </button>
+      </div>
+
+      <!-- Résultat instantané du testeur -->
+      <div id="testResultBox" style="display: none; margin-top: 12px; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius); padding: 12px 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span id="testScoreBadge" style="font-family: var(--font-mono); font-weight: 700; font-size: 14px; padding: 2px 8px; border-radius: 4px;">--</span>
+            <span id="testThreatName" style="font-weight: 600; font-size: 13px; color: #fff;">--</span>
+          </div>
+          <span id="testActionRec" style="font-size: 11.5px; color: var(--text-dim);">Action recommandée : --</span>
+        </div>
+        <div id="testReasonsList" style="font-size: 12px; color: var(--text-muted); margin-top: 6px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tableau des Messages Récents & Évaluation 1-Clic -->
+  <div class="card" style="border: 1px solid var(--border); background: var(--surface);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <div class="card-title" style="font-size: 14px; color: #ffffff;">
+        Journal des Messages & Évaluations Manuelles
+      </div>
+      <div style="font-size: 11.5px; color: var(--text-dim);">
+        {{ messages|length }} message(s) récents analysés
+      </div>
+    </div>
+
+    <div style="overflow-x: auto;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr style="border-bottom: 1px solid var(--border); text-align: left; font-size: 11px; text-transform: uppercase; color: var(--text-dim);">
+            <th style="padding: 8px 10px; width: 85px;">Heure</th>
+            <th style="padding: 8px 10px; width: 160px;">Membre</th>
+            <th style="padding: 8px 10px; width: 100px;">Salon</th>
+            <th style="padding: 8px 10px;">Contenu du Message</th>
+            <th style="padding: 8px 10px; width: 120px; text-align: center;">Confiance</th>
+            <th style="padding: 8px 10px; width: 340px; text-align: right;">Calibrer le Taux de Confiance</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in messages %}
+            <tr id="row_msg_{{ m.id }}" style="border-bottom: 1px solid rgba(255, 255, 255, 0.04); font-size: 12.5px;">
+              
+              <!-- Heure -->
+              <td style="padding: 10px; font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); white-space: nowrap;">
+                {{ m.time or '--:--' }}
+              </td>
+
+              <!-- Membre -->
+              <td style="padding: 10px;">
+                <div style="font-weight: 500; color: #fff;">{{ m.username or 'Membre #' ~ m.user_id }}</div>
+                <div style="font-family: var(--font-mono); font-size: 10.5px; color: var(--text-dim);">ID: {{ m.user_id }}</div>
+              </td>
+
+              <!-- Salon -->
+              <td style="padding: 10px; font-size: 12px; color: var(--text-muted);">
+                #{{ m.channel_name or 'salon' }}
+              </td>
+
+              <!-- Contenu -->
+              <td style="padding: 10px;">
+                <div style="font-family: var(--font-mono); font-size: 12px; color: #e2e8f0; background: rgba(0,0,0,0.3); padding: 5px 8px; border-radius: 4px; max-width: 380px; word-break: break-word;">
+                  « {{ m.content }} »
+                </div>
+                {% if m.reasons %}
+                  <div style="font-size: 11px; color: var(--text-dim); margin-top: 3px;">
+                    Motif : {{ m.reasons[0] }}
+                  </div>
+                {% endif %}
+              </td>
+
+              <!-- Taux de confiance -->
+              <td style="padding: 10px; text-align: center;">
+                <span id="badge_conf_{{ m.id }}" class="status-pill {% if m.score >= 0.85 %}status-danger{% elif m.score >= 0.50 %}status-warning{% else %}status-protected{% endif %}" style="font-size: 11px; font-family: var(--font-mono);">
+                  {{ (m.score * 100)|round|int }}%
+                </span>
+              </td>
+
+              <!-- Boutons de calibration & sanction directe -->
+              <td style="padding: 10px; text-align: right; white-space: nowrap;">
+                <div class="conf-btn-group" style="justify-content: flex-end;">
+                  
+                  <!-- 100% : Raid Certain (Bannir ou Timeout 1h) -->
+                  <button class="btn-conf btn-conf-100" title="Raid certain : sanctionner immédiatement"
+                          onclick="rateConfidence({{ guild_id }}, '{{ m.id }}', '{{ m.user_id }}', 1.0, 'ban')">
+                    🚨 100% Raid
+                  </button>
+
+                  <!-- 70% : Douteux (Timeout 10m de précaution) -->
+                  <button class="btn-conf btn-conf-70" title="Comportement suspect : timeout 10m"
+                          onclick="rateConfidence({{ guild_id }}, '{{ m.id }}', '{{ m.user_id }}', 0.7, 'timeout_10m')">
+                    ⚠️ 70% Suspect
+                  </button>
+
+                  <!-- 30% : Surveillance -->
+                  <button class="btn-conf btn-conf-30" title="Risque faible : garder en observation"
+                          onclick="rateConfidence({{ guild_id }}, '{{ m.id }}', '{{ m.user_id }}', 0.3, 'watch')">
+                    ❓ 30% Faible
+                  </button>
+
+                  <!-- 0% : Faux Positif (Démuter immédiatement) -->
+                  <button class="btn-conf btn-conf-0" title="Faux positif : annuler la sanction et démuter"
+                          onclick="rateConfidence({{ guild_id }}, '{{ m.id }}', '{{ m.user_id }}', 0.0, 'untimeout')">
+                    ✅ 0% Safe
+                  </button>
+
+                </div>
+              </td>
+
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="6" style="padding: 30px; text-align: center; color: var(--text-dim); font-size: 12.5px;">
+                Aucun message suspect enregistré pour le moment.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  async function runLiveConfidenceTest() {
+    const text = document.getElementById('liveTestInput').value.trim();
+    if (!text) return;
+
+    try {
+      const formData = new FormData();
+      formData.append('text', text);
+      const res = await fetch('/api/test-message-confidence', { method: 'POST', body: formData });
+      if (!res.ok) return;
+      const data = await res.json();
+
+      const box = document.getElementById('testResultBox');
+      const badge = document.getElementById('testScoreBadge');
+      const threat = document.getElementById('testThreatName');
+      const rec = document.getElementById('testActionRec');
+      const list = document.getElementById('testReasonsList');
+
+      box.style.display = 'block';
+      badge.textContent = `${data.confidence_pct}%`;
+      
+      if (data.score >= 0.85) {
+        badge.style.background = '#ef4444';
+        badge.style.color = '#fff';
+      } else if (data.score >= 0.50) {
+        badge.style.background = '#f59e0b';
+        badge.style.color = '#000';
+      } else {
+        badge.style.background = '#10b981';
+        badge.style.color = '#fff';
+      }
+
+      threat.textContent = data.category;
+      rec.textContent = `Action recommandée : ${data.suggested_action}`;
+      list.innerHTML = data.reasons.map(r => `• ${r}`).join('<br>') || 'Aucun pattern suspect détecté.';
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function rateConfidence(guildId, msgId, userId, score, action) {
+    try {
+      const formData = new FormData();
+      formData.append('message_id', msgId);
+      formData.append('user_id', userId);
+      formData.append('confidence', score);
+      formData.append('action', action);
+
+      const res = await fetch(`/api/guild/${guildId}/message/rate-confidence`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (res.ok) {
+        const badge = document.getElementById(`badge_conf_${msgId}`);
+        if (badge) {
+          const pct = Math.round(score * 100);
+          badge.textContent = `${pct}%`;
+          badge.className = `status-pill ${score >= 0.85 ? 'status-danger' : (score >= 0.50 ? 'status-warning' : 'status-protected')}`;
+        }
+
+        const actionText = action === 'ban' ? '🔨 Membre banni' : (
+          action === 'timeout_10m' ? '⏳ Membre timeout 10m' : (
+            action === 'untimeout' ? '🔊 Silence levé (Faux positif validé)' : 'Évaluation enregistrée'
+          )
+        );
+        if (typeof showToast === 'function') {
+          showToast(`Taux calibré à ${Math.round(score * 100)}% — ${actionText}`);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+</script>

@@ -49,14 +49,15 @@ SUSPICIOUS_URL_RE = re.compile(
 # 1. Menaces directes d'attaque, raid, nuke, ddos ou destruction
 RAID_THREAT_RE = re.compile(
     r"\b(?:"
-    r"(?:je\s*vais|on\s*va|j'vais|jvais|go|on\s*go|on\s*vient|je\s*viens|go\s*tous|venez)\s*.{0,15}(?:vous\s*)?(?:faire\s*(?:un\s*)?)?(?:raid|nuke|faire\s*sauter|crash|ddos|détruire|detruire|hack|hacker|dox|doxx|détruit|baiser)\b"
+    r"(?:je\s*vais|on\s*va|j'vais|jvais|go|on\s*go|on\s*vient|je\s*viens|go\s*tous|venez|je|on|j\'|j)\s*.{0,15}(?:te|t\'|vous|le|ce\s*serv|ce\s*serveur)?\s*(?:faire\s*(?:un\s*)?)?(?:raid|nuke|faire\s*sauter|crash|ddos|détruire|detruire|hack|hacker|dox|doxx|détruit|baiser)\b"
     r"|(?:je\s*préviens|je\s*previens|attention).{0,25}(?:faire\s*sauter|raid|nuke|crash|détruire|detruire)\b"
-    r"|(?:raid|nuke|faire\s*sauter|crash)\s*(?:ce|le|ce\s*serv|le\s*serv|ce\s*serveur|le\s*serveur|vous|tout)\b"
+    r"|(?:raid|nuke|faire\s*sauter|crash)\s*(?:ce|le|ce\s*serv|le\s*serv|ce\s*serveur|le\s*serveur|te|vous|tout)\b"
     r"|(?:serveur|serv)\s*.{0,15}(?:va\s*sauter|va\s*mourir|va\s*crash|va\s*fermer)\b"
     r"|(?:préparez|preparez)\s*vous\s*au\s*raid\b"
     r"|(?:ez|noob|alors)\s*(?:le\s*)?raid\b"
     r"|(?:c\'?est|cest)\s*(?:un\s*)?raid\b"
-    r"|(?:vous\s*allez\s*(?:vous\s*)?faire\s*(?:raid|nuke))\b"
+    r"|(?:vous\s*allez\s*(?:vous\s*)?faire\s*(?:raid|nuke)|tu\s*vas\s*(?:te\s*)?faire\s*(?:raid|nuke))\b"
+    r"|(?:jte|j\'te|on\s*te|je\s*te)\s*(?:raid|nuke|ddos|crash)\b"
     r")",
     re.IGNORECASE,
 )

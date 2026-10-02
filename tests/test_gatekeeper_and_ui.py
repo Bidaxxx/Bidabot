@@ -260,3 +260,87 @@ async def test_dashboard_soc_analytics_and_simulation():
         assert sim_phish["status"] == "success"
         assert sim_phish["data"]["score"] == 0.96
 
+
+@pytest.mark.asyncio
+async def test_keeper_protections_and_confidence_rating():
+    from dashboard.app import (
+        api_test_message_confidence,
+        api_rate_message_confidence,
+        api_toggle_protection,
+        api_save_protection,
+        tab_protections,
+        tab_messages_confidence,
+    )
+    from unittest.mock import MagicMock, AsyncMock, patch
+    import json
+
+    user = {"id": "999", "username": "AdminStaff"}
+
+    # 1. Test du testeur de confiance en direct avec "je vais te raid"
+    req_test = MagicMock()
+    req_test.form = AsyncMock(return_value={"text": "je vais te raid"})
+    res_test = await api_test_message_confidence(req_test)
+    data_test = json.loads(res_test.body.decode())
+    assert data_test["score"] == 1.0
+    assert data_test["confidence_pct"] == 100
+    assert data_test["is_threat"] is True
+    assert "Raid" in data_test["category"]
+
+    # 2. Test calibration manuelle 100% Raid (Ban direct)
+    req_rate = MagicMock()
+    with patch("dashboard.app.dispatch_bot_action", new_callable=AsyncMock) as mock_dispatch:
+        with patch("dashboard.app.forensics.append_evidence", new_callable=AsyncMock):
+            res_rate = await api_rate_message_confidence(
+                req_rate,
+                guild_id=12345,
+                message_id="msg_101",
+                user_id=88888,
+                confidence=1.0,
+                action="ban",
+                user=user,
+            )
+            assert res_rate["status"] == "ok"
+            assert res_rate["confidence"] == 1.0
+            mock_dispatch.assert_called_once_with(
+                "ban", 12345, target_id=88888,
+                reason="Raid certain validé par modérateur (Confiance 100%)",
+                user_id="999",
+            )
+
+    # 3. Test calibration Faux Positif (Démute immédiat)
+    with patch("dashboard.app.dispatch_bot_action", new_callable=AsyncMock) as mock_dispatch:
+        with patch("dashboard.app.forensics.append_evidence", new_callable=AsyncMock):
+            res_safe = await api_rate_message_confidence(
+                req_rate,
+                guild_id=12345,
+                message_id="msg_102",
+                user_id=77777,
+                confidence=0.0,
+                action="untimeout",
+                user=user,
+            )
+            assert res_safe["status"] == "ok"
+            mock_dispatch.assert_called_once_with(
+                "timeout", 12345, target_id=77777, duration=0,
+                reason="Silence levé (Faux positif validé par modérateur)",
+                user_id="999",
+            )
+
+    # 4. Test toggle et save protection
+    res_toggle = await api_toggle_protection(
+        guild_id=12345, module_key="anti_channel_delete", enabled="true", user=user
+    )
+    assert res_toggle["status"] == "ok"
+    assert res_toggle["enabled"] is True
+
+    req_save = MagicMock()
+    req_save.form = AsyncMock(return_value={
+        "module_key": "anti_channel_delete",
+        "sanction": "ban",
+        "action_count": "3",
+        "window_seconds": "10",
+    })
+    res_save = await api_save_protection(req_save, guild_id=12345, user=user)
+    assert res_save["status"] == "ok"
+
+

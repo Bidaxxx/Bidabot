@@ -1,0 +1,705 @@
+<div class="protections-container">
+  <!-- En-tête Keeper Protect -->
+  <div class="protections-header">
+    <div>
+      <div style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); margin-bottom: 4px;">
+        <span style="color: var(--text-muted);">{{ guild_name }}</span> &nbsp;/&nbsp; Protections
+      </div>
+      <h1 class="detail-title" style="font-size: 24px; font-weight: 700; margin: 0; color: #ffffff;">
+        Protections
+      </h1>
+      <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
+        Active ce qui compte pour ton serveur, puis règle chaque protection. Tout s'enregistre automatiquement.
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <button class="btn btn-secondary btn-sm" onclick="htmx.ajax('GET', '/dashboard/{{ guild_id }}/tab/protections', { target: '#tab-content', swap: 'innerHTML' })">
+        🔄 Actualiser
+      </button>
+      <button class="btn btn-primary btn-sm" onclick="quickApplyRecommended({{ guild_id }})">
+        🪄 Configuration recommandée
+      </button>
+    </div>
+  </div>
+
+  <!-- Barre de Filtres Rapides & Recherche -->
+  <div class="protections-filter-bar">
+    <div class="filter-pills">
+      <button class="filter-pill active" onclick="filterProtections('all', this)">
+        Toutes <span style="font-family: var(--font-mono); opacity: 0.7;">(23)</span>
+      </button>
+      <button class="filter-pill" onclick="filterProtections('active', this)">
+        Actives <span style="font-family: var(--font-mono); color: var(--accent-green);">({{ active_count or 14 }})</span>
+      </button>
+      <button class="filter-pill" onclick="filterProtections('inactive', this)">
+        Inactives <span style="font-family: var(--font-mono); opacity: 0.7;">({{ 23 - (active_count or 14) }})</span>
+      </button>
+    </div>
+
+    <div style="position: relative; width: 240px;">
+      <input type="text" id="protectionSearchInput" onkeyup="searchProtections(this.value)" 
+             placeholder="🔍 Spam, liens, rôles..." 
+             style="width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 12px; font-size: 12px; color: var(--text-main); outline: none;">
+    </div>
+  </div>
+
+  <!-- Grille 2 Colonnes Style Keeper -->
+  <div class="protections-grid">
+    
+    <!-- Colonne Gauche : Liste des modules groupés -->
+    <div class="protections-list-col" id="protectionsList">
+      
+      <!-- 1. SANCTIONS EN SÉRIE -->
+      <div class="protection-group" data-cat="sanctions">
+        <div class="protection-group-header">
+          <span>SANCTIONS EN SÉRIE</span>
+          <span style="font-family: var(--font-mono);">0/3</span>
+        </div>
+        <div class="protection-item-row" onclick="selectProtection('anti_mass_ban')">
+          <div class="protection-item-name">
+            <span class="dot"></span>
+            <span>Anti-ban massif</span>
+          </div>
+          <label class="switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="toggle_anti_mass_ban" onchange="toggleModule({{ guild_id }}, 'anti_mass_ban', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="protection-item-row" onclick="selectProtection('anti_mass_kick')">
+          <div class="protection-item-name">
+            <span class="dot"></span>
+            <span>Anti-kick massif</span>
+          </div>
+          <label class="switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="toggle_anti_mass_kick" onchange="toggleModule({{ guild_id }}, 'anti_mass_kick', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="protection-item-row" onclick="selectProtection('anti_mass_timeout')">
+          <div class="protection-item-name">
+            <span class="dot"></span>
+            <span>Anti-timeout abusif</span>
+          </div>
+          <label class="switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="toggle_anti_mass_timeout" onchange="toggleModule({{ guild_id }}, 'anti_mass_timeout', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- 2. SALONS -->
+      <div class="protection-group" data-cat="salons">
+        <div class="protection-group-header">
+          <span>SALONS</span>
+          <span style="font-family: var(--font-mono); color: var(--accent-green);">1/3</span>
+        </div>
+        <div class="protection-item-row" onclick="selectProtection('anti_channel_create')">
+          <div class="protection-item-name">
+            <span class="dot"></span>
+            <span>Anti-création de salon</span>
+          </div>
+          <label class="switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="toggle_anti_channel_create" onchange="toggleModule({{ guild_id }}, 'anti_channel_create', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="protection-item-row active selected" id="row_anti_channel_delete" onclick="selectProtection('anti_channel_delete')">
+          <div class="protection-item-name">
+            <span class="dot" style="background: var(--accent-green);"></span>
+            <span>Anti-suppression de salon</span>
+          </div>
+          <label class="switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="toggle_anti_channel_delete" checked onchange="toggleModule({{ guild_id }}, 'anti_channel_delete', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="protection-item-row" onclick="selectProtection('anti_channel_edit')">
+          <div class="protection-item-name">
+            <span class="dot"></span>
+            <span>Anti-modification de salon</span>
+          </div>
+          <label class="switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="toggle_anti_channel_edit" onchange="toggleModule({{ guild_id }}, 'anti_channel_edit', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- 3. RÔLES ET PERMISSIONS -->
+      <div class="protection-group" data-cat="roles">
+        <div class="protection-group-header">
+          <span>RÔLES ET PERMISSIONS</span>
+          <span style="font-family: var(--font-mono);">0/6</span>
+        </div>
+        <div class="protection-item-row" onclick="selectProtection('anti_role_create')">
+          <div class="protection-item-name">
+            <span class="dot"></span>
+            <span>Anti-création de rôle</span>
+          </div>
+          <label class="switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="toggle_anti_role_create" onchange="toggleModule({{ guild_id }}, 'anti_role_create', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="protection-item-row" onclick="selectProtection('anti_role_delete')">
+          <div class="protection-item-name">
+            <span class="dot"></span>
+            <span>Anti-suppression de rôle</span>
+          </div>
+          <label class="switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="toggle_anti_role_delete" onchange="toggleModule({{ guild_id }}, 'anti_role_delete', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="protection-item-row" onclick="selectProtection('anti_role_edit')">
+          <div class="protection-item-name">
+            <span class="dot"></span>
+            <span>Anti-modification de rôle</span>
+          </div>
+          <label class="switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="toggle_anti_role_edit" onchange="toggleModule({{ guild_id }}, 'anti_role_edit', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="protection-item-row" onclick="selectProtection('anti_mass_role')">
+          <div class="protection-item-name">
+            <span class="dot"></span>
+            <span>Anti-rôle de masse</span>
+          </div>
+          <label class="switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="toggle_anti_mass_role" onchange="toggleModule({{ guild_id }}, 'anti_mass_role', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- 4. MESSAGES & RAID -->
+      <div class="protection-group" data-cat="messages">
+        <div class="protection-group-header">
+          <span>MESSAGES & RAID</span>
+          <span style="font-family: var(--font-mono); color: var(--accent-green);">4/5</span>
+        </div>
+        <div class="protection-item-row active" id="row_anti_raid_threat" onclick="selectProtection('anti_raid_threat')">
+          <div class="protection-item-name">
+            <span class="dot" style="background: var(--accent-green);"></span>
+            <span>Anti-raid & Menaces directes</span>
+          </div>
+          <label class="switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="toggle_anti_raid_threat" checked onchange="toggleModule({{ guild_id }}, 'anti_raid_threat', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="protection-item-row active" id="row_anti_spam_flood" onclick="selectProtection('anti_spam_flood')">
+          <div class="protection-item-name">
+            <span class="dot" style="background: var(--accent-green);"></span>
+            <span>Anti-spam & Flood</span>
+          </div>
+          <label class="switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="toggle_anti_spam_flood" checked onchange="toggleModule({{ guild_id }}, 'anti_spam_flood', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="protection-item-row active" id="row_anti_scam_phishing" onclick="selectProtection('anti_scam_phishing')">
+          <div class="protection-item-name">
+            <span class="dot" style="background: var(--accent-green);"></span>
+            <span>Anti-scam & Phishing Nitro</span>
+          </div>
+          <label class="switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="toggle_anti_scam_phishing" checked onchange="toggleModule({{ guild_id }}, 'anti_scam_phishing', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="protection-item-row active" id="row_anti_toxic_slurs" onclick="selectProtection('anti_toxic_slurs')">
+          <div class="protection-item-name">
+            <span class="dot" style="background: var(--accent-green);"></span>
+            <span>Anti-propos haineux & Insultes</span>
+          </div>
+          <label class="switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="toggle_anti_toxic_slurs" checked onchange="toggleModule({{ guild_id }}, 'anti_toxic_slurs', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="protection-item-row" id="row_anti_ghostping" onclick="selectProtection('anti_ghostping')">
+          <div class="protection-item-name">
+            <span class="dot"></span>
+            <span>Anti-ghostping</span>
+          </div>
+          <label class="switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="toggle_anti_ghostping" onchange="toggleModule({{ guild_id }}, 'anti_ghostping', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- 5. BOTS ET INTÉGRATIONS -->
+      <div class="protection-group" data-cat="bots">
+        <div class="protection-group-header">
+          <span>BOTS ET INTÉGRATIONS</span>
+          <span style="font-family: var(--font-mono);">0/2</span>
+        </div>
+        <div class="protection-item-row" onclick="selectProtection('anti_rogue_bot')">
+          <div class="protection-item-name">
+            <span class="dot"></span>
+            <span>Anti-bot non autorisé</span>
+          </div>
+          <label class="switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="toggle_anti_rogue_bot" onchange="toggleModule({{ guild_id }}, 'anti_rogue_bot', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="protection-item-row" onclick="selectProtection('anti_rogue_webhook')">
+          <div class="protection-item-name">
+            <span class="dot"></span>
+            <span>Anti-webhook frauduleux</span>
+          </div>
+          <label class="switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="toggle_anti_rogue_webhook" onchange="toggleModule({{ guild_id }}, 'anti_rogue_webhook', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Colonne Droite : Panneau de Détail & Configuration Interactive -->
+    <div class="protection-detail-card" id="protectionDetailCard">
+      
+      <div class="detail-header">
+        <div>
+          <div class="detail-tag" id="detailCategoryTag">SALONS</div>
+          <div class="detail-title" id="detailTitle">Anti-suppression de salon</div>
+          <div class="detail-recorded-pill">
+            <span>✓</span> <span>Tout est enregistré automatiquement</span>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span id="saveBadge" style="font-size: 11px; color: var(--accent-green); opacity: 0; transition: opacity 200ms ease;">✓ Enregistré</span>
+          <label class="switch" style="width: 48px; height: 26px;">
+            <input type="checkbox" id="detailMainSwitch" checked onchange="onDetailMainSwitchChange(this.checked)">
+            <span class="slider" style="border-radius: 26px;"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Explication Ce que fait Bidabot -->
+      <div class="detail-explanation-box" id="detailExplanation">
+        <strong>CE QUE FAIT BIDABOT :</strong> Si un même membre supprime <strong>3 salons</strong> en moins de <strong>10 s</strong>, Bidabot <strong>bannit l'auteur</strong> immédiatement et alerte les administrateurs dans les logs de sécurité.
+      </div>
+
+      <!-- Étape 1 : Détection -->
+      <div class="detail-step">
+        <div class="detail-step-header">
+          <span class="step-num">1</span>
+          <span class="step-title">Détection</span>
+          <span class="step-subtitle">— Ce qui déclenche la protection</span>
+        </div>
+
+        <div id="detectionControls" style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-top: 6px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 12.5px; color: var(--text-muted);">Nombre d'actions :</span>
+            <div style="display: inline-flex; align-items: center; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: var(--radius);">
+              <button onclick="adjustCounter('actionCount', -1)" style="background: none; border: none; color: #fff; padding: 4px 10px; cursor: pointer;">-</button>
+              <span id="actionCountVal" style="font-family: var(--font-mono); font-weight: 600; padding: 0 6px;">3</span>
+              <button onclick="adjustCounter('actionCount', 1)" style="background: none; border: none; color: #fff; padding: 4px 10px; cursor: pointer;">+</button>
+            </div>
+            <span id="actionUnitText" style="font-size: 12.5px; color: var(--text-muted);">salons</span>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 12.5px; color: var(--text-muted);">Durée :</span>
+            <input type="number" id="windowSecondsInput" value="10" min="1" max="300" onchange="autoSaveProtection()"
+                   style="width: 70px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: var(--radius); padding: 5px 8px; color: #fff; font-family: var(--font-mono); text-align: center;">
+            <span style="font-size: 12.5px; color: var(--text-muted);">secondes</span>
+          </div>
+        </div>
+
+        <!-- Contrôles spécifiques de Taux de Confiance (pour Messages & Raids) -->
+        <div id="confidenceControls" style="display: none; flex-direction: column; gap: 8px; margin-top: 6px;">
+          <span style="font-size: 12px; color: var(--text-muted);">Taux de confiance requis pour déclencher la sanction :</span>
+          <div class="conf-btn-group">
+            <button class="btn-conf btn-conf-100 active" onclick="setProtectionConfidence(90, this)">
+              <span>🚨</span> Haute (90%+) &bull; Menace certaine
+            </button>
+            <button class="btn-conf btn-conf-70" onclick="setProtectionConfidence(70, this)">
+              <span>⚠️</span> Moyenne (70%+) &bull; Recommandé
+            </button>
+            <button class="btn-conf btn-conf-30" onclick="setProtectionConfidence(50, this)">
+              <span>🛡️</span> Agressive (50%+) &bull; Tout suspect
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Étape 2 : Réponse -->
+      <div class="detail-step">
+        <div class="detail-step-header">
+          <span class="step-num">2</span>
+          <span class="step-title">Réponse</span>
+          <span class="step-subtitle">— Ce qui arrive à l'auteur</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 6px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <span style="font-size: 13px; color: var(--text-muted);">Sanction immédiate :</span>
+            <select id="sanctionSelect" onchange="autoSaveProtection()"
+                    style="background: rgba(0,0,0,0.35); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 12px; color: #fff; font-size: 13px; outline: none;">
+              <option value="ban" selected>🔨 Bannir définitivement</option>
+              <option value="timeout_1h">⏳ Timeout 1 heure</option>
+              <option value="timeout_10m">⏳ Timeout 10 minutes</option>
+              <option value="kick">👢 Expulser du serveur</option>
+              <option value="quarantine">☣️ Mettre en Quarantaine</option>
+            </select>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.03); padding-top: 10px;">
+            <div>
+              <div style="font-size: 13px; font-weight: 500; color: #fff;">Verrouiller le serveur (Lockdown d'urgence)</div>
+              <div style="font-size: 11.5px; color: var(--text-dim);">Retire temporairement les permissions d'écriture. Radical, mais stoppe net une attaque.</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="lockdownEmergencySwitch" onchange="autoSaveProtection()">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Étape 3 : Alerte -->
+      <div class="detail-step">
+        <div class="detail-step-header">
+          <span class="step-num">3</span>
+          <span class="step-title">Alerte</span>
+          <span class="step-subtitle">— Où publier chaque déclenchement</span>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 6px;">
+          <span style="font-size: 13px; color: var(--text-muted);">Salon de log :</span>
+          <select id="logChannelSelect" onchange="autoSaveProtection()"
+                  style="background: rgba(0,0,0,0.35); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 12px; color: #fff; font-size: 13px; outline: none; min-width: 180px;">
+            <option value="0"># alertes-sécurité (Défaut)</option>
+            {% for c in channels if c.type == 0 %}
+              <option value="{{ c.id }}"># {{ c.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // Dictionnaire de données complètes de chaque protection (Style Keeper)
+  const PROTECTIONS_DATA = {
+    'anti_channel_delete': {
+      category: 'SALONS',
+      title: 'Anti-suppression de salon',
+      explanation: 'Si un même membre supprime <strong>{actions} salons</strong> en moins de <strong>{seconds} s</strong>, Bidabot <strong>bannit l\'auteur</strong> et alerte dans les logs.',
+      defaultActions: 3,
+      unit: 'salons',
+      defaultSeconds: 10,
+      hasConfidence: false,
+      sanction: 'ban'
+    },
+    'anti_channel_create': {
+      category: 'SALONS',
+      title: 'Anti-création de salon',
+      explanation: 'Empêche la création frénétique de salons par un bot corrompu ou un token compromis ({actions} créations en {seconds} s).',
+      defaultActions: 4,
+      unit: 'salons',
+      defaultSeconds: 15,
+      hasConfidence: false,
+      sanction: 'ban'
+    },
+    'anti_channel_edit': {
+      category: 'SALONS',
+      title: 'Anti-modification de salon',
+      explanation: 'Bloque le renommage ou le sabotage des permissions de salons à haute vitesse.',
+      defaultActions: 3,
+      unit: 'salons',
+      defaultSeconds: 10,
+      hasConfidence: false,
+      sanction: 'timeout_1h'
+    },
+    'anti_mass_ban': {
+      category: 'SANCTIONS EN SÉRIE',
+      title: 'Anti-ban massif',
+      explanation: 'Intercepte un modérateur ou bot malveillant qui tente de bannir plusieurs membres légitimes en chaîne.',
+      defaultActions: 3,
+      unit: 'bannissements',
+      defaultSeconds: 10,
+      hasConfidence: false,
+      sanction: 'ban'
+    },
+    'anti_mass_kick': {
+      category: 'SANCTIONS EN SÉRIE',
+      title: 'Anti-kick massif',
+      explanation: 'Bloque l\'expulsion en série de membres de votre communauté.',
+      defaultActions: 3,
+      unit: 'expulsions',
+      defaultSeconds: 10,
+      hasConfidence: false,
+      sanction: 'ban'
+    },
+    'anti_mass_timeout': {
+      category: 'SANCTIONS EN SÉRIE',
+      title: 'Anti-timeout abusif',
+      explanation: 'Surveille et bloque les abus de commande timeout par des modérateurs véreux.',
+      defaultActions: 4,
+      unit: 'timeouts',
+      defaultSeconds: 15,
+      hasConfidence: false,
+      sanction: 'timeout_1h'
+    },
+    'anti_role_create': {
+      category: 'RÔLES ET PERMISSIONS',
+      title: 'Anti-création de rôle',
+      explanation: 'Empêche l\'inondation du serveur par des créations massives de rôles parasites.',
+      defaultActions: 3,
+      unit: 'rôles',
+      defaultSeconds: 10,
+      hasConfidence: false,
+      sanction: 'ban'
+    },
+    'anti_role_delete': {
+      category: 'RÔLES ET PERMISSIONS',
+      title: 'Anti-suppression de rôle',
+      explanation: 'Neutralise immédiatement toute suppression de rôles existants du serveur.',
+      defaultActions: 2,
+      unit: 'rôles',
+      defaultSeconds: 10,
+      hasConfidence: false,
+      sanction: 'ban'
+    },
+    'anti_role_edit': {
+      category: 'RÔLES ET PERMISSIONS',
+      title: 'Anti-modification de rôle',
+      explanation: 'Bloque l\'élévation de privilèges (ex: ajouter la permission Administrateur à un rôle @everyone).',
+      defaultActions: 2,
+      unit: 'modifications',
+      defaultSeconds: 10,
+      hasConfidence: false,
+      sanction: 'ban'
+    },
+    'anti_mass_role': {
+      category: 'RÔLES ET PERMISSIONS',
+      title: 'Anti-rôle de masse',
+      explanation: 'Interdit l\'attribution massive d\'un rôle élevé à des dizaines d\'utilisateurs simultanément.',
+      defaultActions: 5,
+      unit: 'attributions',
+      defaultSeconds: 15,
+      hasConfidence: false,
+      sanction: 'ban'
+    },
+    'anti_raid_threat': {
+      category: 'MESSAGES & RAID',
+      title: 'Anti-raid & Menaces directes',
+      explanation: 'Intercepte dès le <strong>1er message</strong> toute menace d\'attaque (« je vais te raid », « on va raid », « jvais nuke », « ddos »). <strong>Suppression instantanée + sanction automatique</strong>.',
+      defaultActions: 1,
+      unit: 'menace',
+      defaultSeconds: 10,
+      hasConfidence: true,
+      sanction: 'timeout_1h'
+    },
+    'anti_spam_flood': {
+      category: 'MESSAGES & RAID',
+      title: 'Anti-spam & Flood',
+      explanation: 'Détecte les envois de messages à la chaîne (flood rapide). Supprime les messages excédentaires et applique un silence progressif.',
+      defaultActions: 5,
+      unit: 'messages',
+      defaultSeconds: 10,
+      hasConfidence: false,
+      sanction: 'timeout_10m'
+    },
+    'anti_scam_phishing': {
+      category: 'MESSAGES & RAID',
+      title: 'Anti-scam & Phishing Nitro',
+      explanation: 'Supprime immédiatement les liens frauduleux prétendant offrir Discord Nitro gratuit, skins Steam ou serveurs pièges.',
+      defaultActions: 1,
+      unit: 'lien',
+      defaultSeconds: 10,
+      hasConfidence: true,
+      sanction: 'timeout_1h'
+    },
+    'anti_toxic_slurs': {
+      category: 'MESSAGES & RAID',
+      title: 'Anti-propos haineux & Insultes',
+      explanation: 'Intercepte et supprime les insultes racistes ou toxiques, y compris lorsqu\'elles sont découpées en plusieurs messages consécutifs.',
+      defaultActions: 1,
+      unit: 'insulte',
+      defaultSeconds: 10,
+      hasConfidence: true,
+      sanction: 'timeout_1h'
+    },
+    'anti_ghostping': {
+      category: 'MESSAGES & RAID',
+      title: 'Anti-ghostping',
+      explanation: 'Détecte et affiche les mentions fantômes (messages mentionnant un utilisateur ou rôle puis immédiatement supprimés).',
+      defaultActions: 1,
+      unit: 'mention',
+      defaultSeconds: 10,
+      hasConfidence: false,
+      sanction: 'timeout_10m'
+    },
+    'anti_rogue_bot': {
+      category: 'BOTS ET INTÉGRATIONS',
+      title: 'Anti-bot non autorisé',
+      explanation: 'Expulse immédiatement tout nouveau bot invité sur le serveur s\'il n\'a pas été whitelisté par le propriétaire.',
+      defaultActions: 1,
+      unit: 'bot',
+      defaultSeconds: 10,
+      hasConfidence: false,
+      sanction: 'ban'
+    },
+    'anti_rogue_webhook': {
+      category: 'BOTS ET INTÉGRATIONS',
+      title: 'Anti-webhook frauduleux',
+      explanation: 'Supprime automatiquement tout webhook créé sans autorisation pour empêcher le spam silencieux.',
+      defaultActions: 1,
+      unit: 'webhook',
+      defaultSeconds: 10,
+      hasConfidence: false,
+      sanction: 'ban'
+    }
+  };
+
+  let currentSelectedKey = 'anti_channel_delete';
+
+  function selectProtection(key) {
+    currentSelectedKey = key;
+    const data = PROTECTIONS_DATA[key];
+    if (!data) return;
+
+    // Met à jour la sélection visuelle dans la liste de gauche
+    document.querySelectorAll('.protection-item-row').forEach(r => r.classList.remove('selected'));
+    const clickedRow = document.getElementById(`row_${key}`) || event?.currentTarget;
+    if (clickedRow) clickedRow.classList.add('selected');
+
+    // Met à jour la carte de droite
+    document.getElementById('detailCategoryTag').textContent = data.category;
+    document.getElementById('detailTitle').textContent = data.title;
+    
+    // Toggle switch principal
+    const listToggle = document.getElementById(`toggle_${key}`);
+    const isChecked = listToggle ? listToggle.checked : false;
+    document.getElementById('detailMainSwitch').checked = isChecked;
+
+    // Explication textuelle
+    const count = data.defaultActions;
+    const sec = data.defaultSeconds;
+    document.getElementById('detailExplanation').innerHTML = 
+      `<strong>CE QUE FAIT BIDABOT :</strong> ${data.explanation.replace('{actions}', count).replace('{seconds}', sec)}`;
+
+    // Unité et contrôles
+    document.getElementById('actionCountVal').textContent = count;
+    document.getElementById('actionUnitText').textContent = data.unit;
+    document.getElementById('windowSecondsInput').value = sec;
+    document.getElementById('sanctionSelect').value = data.sanction || 'ban';
+
+    // Affiche ou masque les contrôles de Taux de Confiance
+    const confBox = document.getElementById('confidenceControls');
+    if (data.hasConfidence) {
+      confBox.style.display = 'flex';
+    } else {
+      confBox.style.display = 'none';
+    }
+  }
+
+  function onDetailMainSwitchChange(checked) {
+    const listToggle = document.getElementById(`toggle_${currentSelectedKey}`);
+    if (listToggle) {
+      listToggle.checked = checked;
+      toggleModule({{ guild_id }}, currentSelectedKey, checked);
+    }
+  }
+
+  function adjustCounter(id, delta) {
+    const el = document.getElementById('actionCountVal');
+    let val = parseInt(el.textContent) || 1;
+    val = Math.max(1, val + delta);
+    el.textContent = val;
+    autoSaveProtection();
+  }
+
+  function setProtectionConfidence(threshold, btn) {
+    document.querySelectorAll('#confidenceControls .btn-conf').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    autoSaveProtection();
+  }
+
+  async function toggleModule(guildId, moduleKey, enabled) {
+    const row = document.getElementById(`row_${moduleKey}`) || event?.target.closest('.protection-item-row');
+    if (row) {
+      const dot = row.querySelector('.dot');
+      if (dot) dot.style.background = enabled ? 'var(--accent-green)' : 'var(--text-dim)';
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('module_key', moduleKey);
+      formData.append('enabled', enabled ? 'true' : 'false');
+      await fetch(`/api/guild/${guildId}/protection/toggle`, { method: 'POST', body: formData });
+      showAutoSaveBadge();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function autoSaveProtection() {
+    showAutoSaveBadge();
+    try {
+      const formData = new FormData();
+      formData.append('module_key', currentSelectedKey);
+      formData.append('sanction', document.getElementById('sanctionSelect').value);
+      formData.append('action_count', document.getElementById('actionCountVal').textContent);
+      formData.append('window_seconds', document.getElementById('windowSecondsInput').value);
+      formData.append('log_channel_id', document.getElementById('logChannelSelect').value);
+      formData.append('lockdown_on_trigger', document.getElementById('lockdownEmergencySwitch').checked ? 'true' : 'false');
+      await fetch(`/api/guild/{{ guild_id }}/protection/save`, { method: 'POST', body: formData });
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  function showAutoSaveBadge() {
+    const b = document.getElementById('saveBadge');
+    if (b) {
+      b.style.opacity = '1';
+      setTimeout(() => { b.style.opacity = '0'; }, 1500);
+    }
+  }
+
+  function filterProtections(type, btn) {
+    document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.protection-item-row').forEach(row => {
+      const isChecked = row.querySelector('input[type="checkbox"]')?.checked;
+      if (type === 'all') row.style.display = 'flex';
+      else if (type === 'active') row.style.display = isChecked ? 'flex' : 'none';
+      else if (type === 'inactive') row.style.display = !isChecked ? 'flex' : 'none';
+    });
+  }
+
+  function searchProtections(q) {
+    q = q.toLowerCase().trim();
+    document.querySelectorAll('.protection-item-row').forEach(row => {
+      const text = row.textContent.toLowerCase();
+      row.style.display = (!q || text.includes(q)) ? 'flex' : 'none';
+    });
+  }
+
+  async function quickApplyRecommended(guildId) {
+    if (!confirm("Appliquer la configuration de protection recommandée pour ce serveur ?\n\nActive l'Anti-Raid immédiat, l'Anti-Phishing, l'Anti-Suppression de salon et l'Anti-Bot.")) return;
+    ['anti_raid_threat', 'anti_scam_phishing', 'anti_spam_flood', 'anti_channel_delete', 'anti_rogue_bot'].forEach(k => {
+      const toggle = document.getElementById(`toggle_${k}`);
+      if (toggle) {
+        toggle.checked = true;
+        toggleModule(guildId, k, true);
+      }
+    });
+    alert("Configuration recommandée appliquée avec succès !");
+  }
+</script>
