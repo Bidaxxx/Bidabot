@@ -243,7 +243,7 @@ async def auto_train_job(db, scorer: LegitimacyScorer, append_evidence=None) -> 
             """UPDATE risk_scores r
                SET label = 'raid'
                FROM banned_fingerprints b
-               WHERE r.user_id = b.user_id AND r.guild_id = b.guild_id AND r.label IS NULL"""
+               WHERE r.user_id = b.banned_user_id AND r.guild_id = b.guild_id AND r.label IS NULL"""
         )
         # Auto-labellisation des membres anciens et sains
         await db.pool.execute(
