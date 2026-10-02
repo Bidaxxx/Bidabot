@@ -22,12 +22,12 @@ if [ -n "$REMOTE" ] && [ "$LOCAL" != "$REMOTE" ]; then
     # Si les dépendances Python ou le Dockerfile ont changé, on reconstruit
     if git diff --name-only "$LOCAL" "$REMOTE" 2>/dev/null | grep -E -q "requirements.txt|Dockerfile"; then
         echo "[$(date '+%Y-%m-%d %H:%M:%S')] 📦 Nouvelles dépendances détectées, reconstruction Docker..."
-        docker compose up -d --build bot dashboard federation_api
+        docker compose up -d --build --remove-orphans
     else
-        # Grâce aux volumes montés en direct, un redémarrage suffit
-        docker compose up -d bot dashboard
-        docker compose restart bot dashboard
+        # Applique toute modification de configuration docker-compose ou Caddy
+        docker compose up -d --remove-orphans
+        docker compose restart bot dashboard caddy 2>/dev/null || docker compose restart bot dashboard
     fi
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ✅ Bidabot & Dashboard mis à jour avec succès !"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ✅ Bidabot, Dashboard & Caddy HTTPS mis à jour avec succès !"
 fi
 

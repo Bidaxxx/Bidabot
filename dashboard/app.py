@@ -50,6 +50,24 @@ logger = logging.getLogger("sentinel.dashboard")
 app = FastAPI(title="BIDABOT — Discord Security Platform")
 app.add_middleware(SessionMiddleware, secret_key=settings.dashboard_secret_key)
 
+
+@app.middleware("http")
+async def security_and_https_headers_middleware(request: Request, call_next):
+    """En-têtes de sécurité stricts (HSTS, nosniff, SAMEORIGIN) et support du proxy HTTPS."""
+    response: Response = await call_next(request)
+    proto = request.headers.get("x-forwarded-proto", request.url.scheme)
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host", "")
+
+    # Forcer HSTS pour tout trafic sécurisé ou utilisant le domaine public
+    if proto == "https" or "sslip.io" in host or host.startswith("35.254.2.0"):
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
+
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
+
 # Fichiers statiques et templates
 static_dir = Path(__file__).parent / "static"
 static_dir.mkdir(exist_ok=True)
@@ -94,8 +112,11 @@ def get_redirect_uri(request: Request | None = None) -> str:
     if getattr(settings, "discord_redirect_uri", None):
         return settings.discord_redirect_uri
     if request:
-        base = str(request.base_url).rstrip("/")
-        return f"{base}/callback"
+        proto = request.headers.get("x-forwarded-proto") or request.url.scheme
+        host = request.headers.get("x-forwarded-host") or request.headers.get("host") or request.url.netloc
+        if host.endswith(".sslip.io") or proto == "https":
+            proto = "https"
+        return f"{proto}://{host}/callback"
     return "http://localhost:8002/callback"
 
 

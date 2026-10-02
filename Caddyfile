@@ -1,0 +1,38 @@
+{
+    email admin@bidabot.org
+}
+
+# 1. Nom de domaine automatique gratuit avec certificat SSL Let's Encrypt officiel (Cadenas vert sans alerte)
+35.254.2.0.sslip.io {
+    encode gzip zstd
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+    reverse_proxy dashboard:8002
+}
+
+# 2. Nom de domaine personnalisé si configuré dans le fichier .env (ex: DOMAIN=bidabot.fr)
+{$DOMAIN:bidabot.local} {
+    encode gzip zstd
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+    reverse_proxy dashboard:8002
+}
+
+# 3. Accès direct en HTTP sur l'adresse IP : redirection automatique et permanente vers le HTTPS officiel
+http://35.254.2.0 {
+    redir https://35.254.2.0.sslip.io{uri} permanent
+}
+
+# 4. Accès direct en HTTPS sur l'adresse IP
+https://35.254.2.0 {
+    tls internal
+    redir https://35.254.2.0.sslip.io{uri} permanent
+}
