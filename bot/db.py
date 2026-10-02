@@ -71,9 +71,11 @@ class Database:
                         channel_id BIGINT NOT NULL,
                         max_ping_ms INT NOT NULL DEFAULT 250,
                         auto_renew BOOLEAN NOT NULL DEFAULT TRUE,
+                        check_interval_seconds INT NOT NULL DEFAULT 30,
                         created_at TIMESTAMPTZ DEFAULT now(),
                         PRIMARY KEY (guild_id, channel_id)
                     );
+                    ALTER TABLE voice_antistress_config ADD COLUMN IF NOT EXISTS check_interval_seconds INT NOT NULL DEFAULT 30;
                     CREATE TABLE IF NOT EXISTS guild_snapshots (
                         id BIGSERIAL PRIMARY KEY,
                         guild_id BIGINT NOT NULL,
@@ -1017,15 +1019,24 @@ class Database:
     # ── Anti-Stresseur Vocal ──────────────────────────────────────────
 
     async def set_voice_antistress_config(
-        self, guild_id: int, channel_id: int, max_ping_ms: int = 250, auto_renew: bool = True
+        self, guild_id: int, channel_id: int, max_ping_ms: int = 250, auto_renew: bool = True, check_interval_seconds: int = 30
     ) -> None:
-        """Enregistre ou met à jour la configuration anti-stresseur d'un salon vocal."""
+        """Enregistre ou met à jour la configuration anti-stresseur d'un salon vocal avec intervalle de ping."""
         await self.pool.execute(
-            """INSERT INTO voice_antistress_config (guild_id, channel_id, max_ping_ms, auto_renew)
-               VALUES ($1, $2, $3, $4)
+            """INSERT INTO voice_antistress_config (guild_id, channel_id, max_ping_ms, auto_renew, check_interval_seconds)
+               VALUES ($1, $2, $3, $4, $5)
                ON CONFLICT (guild_id, channel_id)
-               DO UPDATE SET max_ping_ms = EXCLUDED.max_ping_ms, auto_renew = EXCLUDED.auto_renew""",
-            guild_id, channel_id, max_ping_ms, auto_renew,
+               DO UPDATE SET max_ping_ms = EXCLUDED.max_ping_ms,
+                             auto_renew = EXCLUDED.auto_renew,
+                             check_interval_seconds = EXCLUDED.check_interval_seconds""",
+            guild_id, channel_id, max_ping_ms, auto_renew, check_interval_seconds,
+        )
+
+    async def set_guild_voice_interval(self, guild_id: int, check_interval_seconds: int) -> None:
+        """Met à jour l'intervalle de vérification de ping pour tous les salons vocaux du serveur."""
+        await self.pool.execute(
+            "UPDATE voice_antistress_config SET check_interval_seconds = $2 WHERE guild_id = $1",
+            guild_id, check_interval_seconds,
         )
 
     async def remove_voice_antistress_config(self, guild_id: int, channel_id: int) -> bool:
@@ -1039,7 +1050,7 @@ class Database:
     async def get_voice_antistress_configs(self, guild_id: int) -> list[dict]:
         """Retourne la liste des salons vocaux sous surveillance pour un serveur."""
         rows = await self.pool.fetch(
-            "SELECT guild_id, channel_id, max_ping_ms, auto_renew, created_at FROM voice_antistress_config WHERE guild_id = $1 ORDER BY created_at ASC",
+            "SELECT guild_id, channel_id, max_ping_ms, auto_renew, check_interval_seconds, created_at FROM voice_antistress_config WHERE guild_id = $1 ORDER BY created_at ASC",
             guild_id,
         )
         return [dict(r) for r in rows]
@@ -1047,7 +1058,7 @@ class Database:
     async def get_all_voice_antistress_configs(self) -> list[dict]:
         """Retourne toutes les configurations anti-stresseur actives."""
         rows = await self.pool.fetch(
-            "SELECT guild_id, channel_id, max_ping_ms, auto_renew FROM voice_antistress_config WHERE auto_renew = TRUE",
+            "SELECT guild_id, channel_id, max_ping_ms, auto_renew, check_interval_seconds FROM voice_antistress_config WHERE auto_renew = TRUE",
         )
         return [dict(r) for r in rows]
 

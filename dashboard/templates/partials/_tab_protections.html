@@ -258,6 +258,33 @@
             <input type="checkbox" id="toggle_anti_rogue_webhook" onchange="toggleModule({{ guild_id }}, 'anti_rogue_webhook', this.checked)">
             <span class="slider"></span>
           </label>
+      </div>
+
+      <!-- 6. SALONS VOCAUX & ANTISTRESS -->
+      <div class="protection-group" data-cat="vocal">
+        <div class="protection-group-header">
+          <span>SALONS VOCAUX & ANTISTRESS</span>
+          <span style="font-family: var(--font-mono);">0/2</span>
+        </div>
+        <div class="protection-item-row" onclick="selectProtection('anti_voice_ddos')">
+          <div class="protection-item-name">
+            <span class="dot"></span>
+            <span>Anti-stresseur & freeze vocal</span>
+          </div>
+          <label class="switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="toggle_anti_voice_ddos" onchange="toggleModule({{ guild_id }}, 'anti_voice_ddos', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="protection-item-row" onclick="selectProtection('anti_voice_flood')">
+          <div class="protection-item-name">
+            <span class="dot"></span>
+            <span>Anti-flood de connexions vocales</span>
+          </div>
+          <label class="switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="toggle_anti_voice_flood" onchange="toggleModule({{ guild_id }}, 'anti_voice_flood', this.checked)">
+            <span class="slider"></span>
+          </label>
         </div>
       </div>
 
@@ -564,6 +591,26 @@
       defaultSeconds: 10,
       hasConfidence: false,
       sanction: 'ban'
+    },
+    'anti_voice_ddos': {
+      category: 'SALONS VOCAUX & ANTISTRESS',
+      title: 'Anti-stresseur & freeze vocal',
+      explanation: 'Surveille la latence WebRTC et le débit UDP de chaque salon vocal. Si le ping dépasse le seuil ou subit un stresseur, le salon est instantanément recréé et tous les membres sont transférés sans coupure audio.',
+      defaultActions: 1,
+      unit: 'anomalie',
+      defaultSeconds: 30,
+      hasConfidence: false,
+      sanction: 'ban'
+    },
+    'anti_voice_flood': {
+      category: 'SALONS VOCAUX & ANTISTRESS',
+      title: 'Anti-flood de connexions vocales',
+      explanation: 'Détecte les bots ou comptes spammant les connexions/déconnexions ou les états mute/deaf à haute fréquence pour saturer les passerelles vocales Discord.',
+      defaultActions: 8,
+      unit: 'connexions',
+      defaultSeconds: 6,
+      hasConfidence: false,
+      sanction: 'timeout_1h'
     }
   };
 

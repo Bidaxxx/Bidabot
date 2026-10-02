@@ -344,3 +344,52 @@ async def test_keeper_protections_and_confidence_rating():
     assert res_save["status"] == "ok"
 
 
+@pytest.mark.asyncio
+async def test_voice_antistress_interval_and_settings():
+    from dashboard.app import action_voice_settings, action_voice_interval, action_voice_measure_ping, action_voice_remove
+
+    user = {"id": "999", "username": "Admin", "is_root": True}
+
+    with patch("dashboard.app.db.set_voice_antistress_config", new_callable=AsyncMock) as mock_set:
+        res = await action_voice_settings(
+            guild_id=12345,
+            channel_id=98765,
+            max_ping_ms=250,
+            auto_renew="true",
+            check_interval_seconds=15,
+            user=user,
+        )
+        assert res["status"] == "ok"
+        assert res["check_interval_seconds"] == 15
+        mock_set.assert_called_once_with(
+            guild_id=12345,
+            channel_id=98765,
+            max_ping_ms=250,
+            auto_renew=True,
+            check_interval_seconds=15,
+        )
+
+    with patch("dashboard.app.db.set_guild_voice_interval", new_callable=AsyncMock) as mock_interval:
+        res_int = await action_voice_interval(
+            guild_id=12345,
+            check_interval_seconds=60,
+            user=user,
+        )
+        assert res_int["status"] == "ok"
+        assert res_int["check_interval_seconds"] == 60
+        mock_interval.assert_called_once_with(12345, 60)
+
+    # Test mesure de ping
+    res_ping = await action_voice_measure_ping(12345, 98765, user=user)
+    assert res_ping["status"] == "ok"
+    assert "ping_ms" in res_ping
+    assert res_ping["ping_ms"] > 0
+    assert res_ping["health"] in ("normal", "warning", "stressed")
+
+    # Test retrait
+    with patch("dashboard.app.db.remove_voice_antistress_config", new_callable=AsyncMock, return_value=True):
+        res_rem = await action_voice_remove(12345, 98765, user=user)
+        assert res_rem["status"] == "ok"
+
+
+

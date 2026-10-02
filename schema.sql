@@ -274,6 +274,7 @@ CREATE TABLE IF NOT EXISTS voice_antistress_config (
     channel_id  BIGINT NOT NULL,
     max_ping_ms INT NOT NULL DEFAULT 250,
     auto_renew  BOOLEAN NOT NULL DEFAULT TRUE,
+    check_interval_seconds INT NOT NULL DEFAULT 30,
     created_at  TIMESTAMPTZ DEFAULT now(),
     PRIMARY KEY (guild_id, channel_id)
 );

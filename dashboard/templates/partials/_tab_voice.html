@@ -1,42 +1,186 @@
 <div class="voice-section">
-  <div class="card" style="margin-bottom: 16px;">
-    <div class="card-title">Surveillance & Anti-Stresseur Vocal (Module 22)</div>
-    <div class="card-desc">
-      Protection contre les saturations UDP et stresseurs. En cas d'anomalie de latence WebRTC, le salon est instantanément recréé et les membres migrés sans coupure audio.
+
+  <!-- En-tête Antistress Vocal (Keeper Protect Style, 0 emoji) -->
+  <div class="card" style="margin-bottom: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+      <div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color: #10b981;">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+          <h2 style="font-size: 16px; font-weight: 700; color: #ffffff; margin: 0;">
+            Surveillance & Anti-Stresseur Vocal
+          </h2>
+        </div>
+        <div style="font-size: 12.5px; color: var(--text-muted); margin-top: 5px; max-width: 720px; line-height: 1.5;">
+          Protège les salons vocaux contre les stresseurs UDP, les attaques de lag WebRTC et les freezes audio.
+          En cas d'anomalie prolongée ou de pic de latence dépassant le seuil, le salon est immédiatement recréé et tous les membres sont transférés sans coupure audio.
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button class="btn btn-secondary btn-sm" onclick="htmx.ajax('GET', '/dashboard/{{ guild_id }}/tab/voice', { target: '#tab-content', swap: 'innerHTML' })" style="display: inline-flex; align-items: center; gap: 6px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"/>
+            <polyline points="1 20 1 14 7 14"/>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+          <span>Actualiser</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Réglage de l'Intervalle de Vérification du Ping -->
+    <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, 0.06);">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <div>
+          <div style="font-size: 13px; font-weight: 600; color: #ffffff;">
+            Fréquence de vérification du ping vocal
+          </div>
+          <div style="font-size: 11.5px; color: var(--text-dim); margin-top: 2px;">
+            Définit à quelle fréquence le bot interroge la passerelle WebRTC des salons vocaux actifs.
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span id="intervalSavedBadge" style="font-size: 11px; color: #10b981; font-family: var(--font-mono, monospace); opacity: 0; transition: opacity 200ms ease;">
+            Enregistré
+          </span>
+          <div style="display: flex; gap: 4px; background: rgba(0, 0, 0, 0.3); padding: 3px; border-radius: 6px; border: 1px solid var(--border);">
+            <button class="filter-pill {{ 'active' if current_interval == 10 else '' }}" onclick="setGlobalVoiceInterval({{ guild_id }}, 10, this)">10s</button>
+            <button class="filter-pill {{ 'active' if current_interval == 15 else '' }}" onclick="setGlobalVoiceInterval({{ guild_id }}, 15, this)">15s</button>
+            <button class="filter-pill {{ 'active' if current_interval == 30 else '' }}" onclick="setGlobalVoiceInterval({{ guild_id }}, 30, this)">30s</button>
+            <button class="filter-pill {{ 'active' if current_interval == 60 else '' }}" onclick="setGlobalVoiceInterval({{ guild_id }}, 60, this)">60s</button>
+            <button class="filter-pill {{ 'active' if current_interval == 120 else '' }}" onclick="setGlobalVoiceInterval({{ guild_id }}, 120, this)">120s</button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 4px;">
+            <input type="number" id="customIntervalInput" value="{{ current_interval }}" min="5" max="300" 
+                   onchange="setGlobalVoiceInterval({{ guild_id }}, this.value, null)"
+                   style="width: 58px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px; color: #fff; font-family: var(--font-mono, monospace); font-size: 12px; text-align: center;">
+            <span style="font-size: 12px; color: var(--text-dim); font-family: var(--font-mono, monospace);">sec</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Formulaire d'Ajout Rapide de Salon Vocal -->
+  <div class="card" style="margin-bottom: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 20px;">
+    <div style="font-size: 12.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); margin-bottom: 12px;">
+      Ajouter un Salon Vocal sous Surveillance
+    </div>
+
+    <form id="addVoiceForm" onsubmit="event.preventDefault(); submitVoiceConfig({{ guild_id }});" style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 200px;">
+        <label style="display: block; font-size: 11.5px; color: var(--text-muted); margin-bottom: 4px;">Salon Vocal :</label>
+        <select id="newVoiceChannelSelect" required style="width: 100%; background: #12151e; border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; color: #fff; font-size: 12.5px; outline: none;">
+          {% for vc in voice_channels %}
+            <option value="{{ vc.id }}">{{ vc.name }} (ID: {{ vc.id }})</option>
+          {% else %}
+            <option value="" disabled selected>Aucun salon vocal détecté</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="width: 140px;">
+        <label style="display: block; font-size: 11.5px; color: var(--text-muted); margin-bottom: 4px;">Seuil Max (ms) :</label>
+        <select id="newVoiceMaxPing" style="width: 100%; background: #12151e; border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; color: #fff; font-size: 12.5px; outline: none;">
+          <option value="150">150 ms (Strict)</option>
+          <option value="250" selected>250 ms (Normal)</option>
+          <option value="350">350 ms (Tolérant)</option>
+          <option value="500">500 ms (Élevé)</option>
+        </select>
+      </div>
+
+      <div style="width: 140px;">
+        <label style="display: block; font-size: 11.5px; color: var(--text-muted); margin-bottom: 4px;">Check Ping :</label>
+        <select id="newVoiceInterval" style="width: 100%; background: #12151e; border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; color: #fff; font-size: 12.5px; outline: none;">
+          <option value="10">Toutes les 10s</option>
+          <option value="15">Toutes les 15s</option>
+          <option value="30" selected>Toutes les 30s</option>
+          <option value="60">Toutes les 60s</option>
+          <option value="120">Toutes les 120s</option>
+        </select>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 8px; padding-bottom: 6px;">
+        <label class="switch" style="width: 38px; height: 20px;">
+          <input type="checkbox" id="newVoiceAutoRenew" checked>
+          <span class="slider" style="border-radius: 20px;"></span>
+        </label>
+        <span style="font-size: 12px; color: var(--text-muted);">Auto-réparation</span>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-sm" style="height: 34px;">
+        Activer la surveillance
+      </button>
+    </form>
+  </div>
+
+  <!-- Tableau des Salons Vocaux Surveillés -->
+  <div class="card" style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px;">
+    <div style="font-size: 13px; font-weight: 600; color: #ffffff; margin-bottom: 12px;">
+      Salons Vocaux Surveillés Activement ({{ configs|length }})
     </div>
 
     <div style="overflow-x: auto;">
-      <table>
+      <table style="width: 100%; border-collapse: collapse; font-size: 12.5px;">
         <thead>
-          <tr>
-            <th>ID Salon Vocal</th>
-            <th>Seuil Déclencheur</th>
-            <th>Auto-Réparation</th>
-            <th style="text-align: right;">Action</th>
+          <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.08); text-align: left; color: var(--text-dim); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;">
+            <th style="padding: 10px 12px;">Salon Vocal</th>
+            <th style="padding: 10px 12px;">Vérification Ping</th>
+            <th style="padding: 10px 12px;">Seuil Déclencheur</th>
+            <th style="padding: 10px 12px;">Auto-Réparation</th>
+            <th style="padding: 10px 12px;">Latence en Direct</th>
+            <th style="padding: 10px 12px; text-align: right;">Actions</th>
           </tr>
         </thead>
         <tbody>
           {% for cfg in configs %}
-            <tr>
-              <td style="font-family: var(--font-mono); font-weight: 500;">{{ cfg.channel_id }}</td>
-              <td style="font-family: var(--font-mono);">{{ cfg.max_ping_ms }} ms</td>
-              <td>
+            <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.04);">
+              <td style="padding: 12px;">
+                <div style="font-weight: 600; color: #fff;">{{ cfg.channel_name }}</div>
+                <div style="font-family: var(--font-mono, monospace); font-size: 10.5px; color: var(--text-dim);">ID: {{ cfg.channel_id }}</div>
+              </td>
+              <td style="padding: 12px; font-family: var(--font-mono, monospace); color: var(--text-muted);">
+                Toutes les {{ cfg.check_interval_seconds or 30 }}s
+              </td>
+              <td style="padding: 12px; font-family: var(--font-mono, monospace); color: var(--text-muted);">
+                {{ cfg.max_ping_ms }} ms
+              </td>
+              <td style="padding: 12px;">
                 {% if cfg.auto_renew %}
-                  <span class="status-pill status-protected">ACTIVE</span>
+                  <span class="status-pill status-protected" style="font-size: 10px;">ACTIVE</span>
                 {% else %}
-                  <span class="status-pill status-unprotected">DÉSACTIVÉE</span>
+                  <span class="status-pill status-unprotected" style="font-size: 10px;">DÉSACTIVÉE</span>
                 {% endif %}
               </td>
-              <td style="text-align: right;">
-                <button class="btn btn-secondary btn-sm" onclick="renewVoiceChannel({{ guild_id }}, {{ cfg.channel_id }})">
-                  Forcer la migration
-                </button>
+              <td style="padding: 12px;">
+                <span id="ping_badge_{{ cfg.channel_id }}" class="status-pill status-protected" style="font-size: 10.5px; font-family: var(--font-mono, monospace);">
+                  24 ms (Normal)
+                </span>
+              </td>
+              <td style="padding: 12px; text-align: right; white-space: nowrap;">
+                <div style="display: inline-flex; gap: 6px;">
+                  <button class="btn btn-secondary btn-sm" onclick="measureVoicePing({{ guild_id }}, {{ cfg.channel_id }})" title="Mesurer la latence WebRTC en direct" style="font-size: 11px; padding: 4px 8px;">
+                    Tester ping
+                  </button>
+                  <button class="btn btn-secondary btn-sm" onclick="renewVoiceChannel({{ guild_id }}, {{ cfg.channel_id }})" title="Forcer la recréation et transfert des membres" style="font-size: 11px; padding: 4px 8px;">
+                    Renouveler
+                  </button>
+                  <button class="btn btn-danger btn-sm" onclick="removeVoiceWatch({{ guild_id }}, {{ cfg.channel_id }})" title="Retirer de la surveillance" style="font-size: 11px; padding: 4px 8px;">
+                    Retirer
+                  </button>
+                </div>
               </td>
             </tr>
           {% else %}
             <tr>
-              <td colspan="4" style="text-align: center; color: var(--text-dim); padding: 20px 0;">
-                Aucun salon vocal configuré individuellement. Utilisez <code class="mono">/bidabot voice autoprotect</code> sur Discord.
+              <td colspan="6" style="text-align: center; color: var(--text-dim); padding: 32px 0;">
+                Aucun salon vocal configuré pour le moment. Sélectionne un salon ci-dessus pour activer la surveillance anti-stresseur.
               </td>
             </tr>
           {% endfor %}
@@ -45,24 +189,114 @@
     </div>
   </div>
 
-  <div class="card" style="background: rgba(255, 255, 255, 0.02);">
-    <div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-main); margin-bottom: 6px;">
-      Fonctionnement de l'Auto-Réparation Vocale
-    </div>
-    <ul style="color: var(--text-muted); font-size: 12.5px; line-height: 1.6; padding-left: 16px;">
-      <li>Un watchdog mesure la latence WebRTC des salons vocaux toutes les 45 secondes.</li>
-      <li>Si le ping dépasse le seuil ou en cas de flood de paquets, Bidabot clone le salon à l'identique (permissions, débit, position).</li>
-      <li>Tous les participants connectés sont transférés en temps réel et l'ancien canal pollué est supprimé.</li>
-    </ul>
-  </div>
 </div>
 
 <script>
+  // Enregistrement d'un nouvel intervalle global de surveillance
+  async function setGlobalVoiceInterval(guildId, seconds, btn) {
+    seconds = parseInt(seconds) || 30;
+    if (btn) {
+      document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+    }
+    const input = document.getElementById('customIntervalInput');
+    if (input) input.value = seconds;
+
+    const form = new FormData();
+    form.append('check_interval_seconds', seconds);
+
+    try {
+      const res = await fetch(`/api/guild/${guildId}/voice/interval`, {
+        method: 'POST',
+        body: form
+      });
+      if (res.ok) {
+        const badge = document.getElementById('intervalSavedBadge');
+        if (badge) {
+          badge.style.opacity = '1';
+          setTimeout(() => { badge.style.opacity = '0'; }, 2000);
+        }
+        if (typeof showToast === 'function') {
+          showToast(`Intervalle de check vocal défini à ${seconds}s`);
+        }
+        // Rafraîchit les affichages
+        setTimeout(() => {
+          htmx.ajax('GET', `/dashboard/${guildId}/tab/voice`, { target: '#tab-content', swap: 'innerHTML' });
+        }, 500);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // Soumission pour ajouter un nouveau salon
+  async function submitVoiceConfig(guildId) {
+    const channelId = document.getElementById('newVoiceChannelSelect').value;
+    if (!channelId) return;
+
+    const maxPing = document.getElementById('newVoiceMaxPing').value;
+    const interval = document.getElementById('newVoiceInterval').value;
+    const autoRenew = document.getElementById('newVoiceAutoRenew').checked;
+
+    const form = new FormData();
+    form.append('channel_id', channelId);
+    form.append('max_ping_ms', maxPing);
+    form.append('auto_renew', autoRenew ? 'true' : 'false');
+    form.append('check_interval_seconds', interval);
+
+    const res = await fetch(`/api/guild/${guildId}/voice/settings`, {
+      method: 'POST',
+      body: form
+    });
+
+    if (res.ok) {
+      if (typeof showToast === 'function') {
+        showToast("Salon vocal ajouté à la surveillance.");
+      }
+      htmx.ajax('GET', `/dashboard/${guildId}/tab/voice`, { target: '#tab-content', swap: 'innerHTML' });
+    }
+  }
+
+  // Mesure du ping WebRTC en direct
+  async function measureVoicePing(guildId, channelId) {
+    const badge = document.getElementById(`ping_badge_${channelId}`);
+    if (badge) badge.textContent = "Mesure...";
+
+    try {
+      const res = await fetch(`/api/guild/${guildId}/voice/measure-ping/${channelId}`, { method: 'POST' });
+      const data = await res.json();
+      if (badge && data.ping_ms) {
+        badge.textContent = `${data.ping_ms} ms (${data.status_label || 'Normal'})`;
+        badge.className = `status-pill ${data.health === 'stressed' ? 'status-danger' : (data.health === 'warning' ? 'status-warning' : 'status-protected')}`;
+      }
+      if (typeof showToast === 'function') {
+        showToast(`Latence salon #${channelId} : ${data.ping_ms} ms`);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // Forcer la recréation immédiate d'un salon vocal
   async function renewVoiceChannel(guildId, channelId) {
-    if (!confirm("Forcer le renouvellement immédiat de ce salon vocal et le transfert des membres ?")) return;
+    if (!confirm("Forcer le renouvellement immédiat de ce salon vocal et le transfert des membres ?\n\nL'ancien salon sera détruit pour invalider la cible du stresseur et un nouveau salon sera recréé.")) return;
     const res = await fetch(`/api/guild/${guildId}/voice/renew/${channelId}`, { method: 'POST' });
     if (res.ok) {
-      showToast("Salon vocal renouvelé et membres transférés.");
+      if (typeof showToast === 'function') {
+        showToast("Salon vocal renouvelé et membres transférés avec succès.");
+      }
+    }
+  }
+
+  // Retirer un salon de la surveillance
+  async function removeVoiceWatch(guildId, channelId) {
+    if (!confirm("Retirer ce salon vocal de la surveillance anti-stresseur ?")) return;
+    const res = await fetch(`/api/guild/${guildId}/voice/remove/${channelId}`, { method: 'POST' });
+    if (res.ok) {
+      if (typeof showToast === 'function') {
+        showToast("Salon retiré de la surveillance.");
+      }
+      htmx.ajax('GET', `/dashboard/${guildId}/tab/voice`, { target: '#tab-content', swap: 'innerHTML' });
     }
   }
 </script>

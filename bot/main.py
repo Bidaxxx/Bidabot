@@ -590,12 +590,23 @@ async def _purge_ban_fingerprints_task():
         logger.info("Fingerprints de bannis expirés supprimés : %d", count)
 
 
-@tasks.loop(seconds=45)
+_last_voice_check: dict[tuple[int, int], float] = {}
+
+@tasks.loop(seconds=5)
 async def _voice_watchdog_task():
-    """Surveillance continue de latence et auto-réparation des salons vocaux."""
+    """Surveillance continue de latence et auto-réparation des salons vocaux selon l'intervalle configuré."""
+    import time
     try:
         configs = await db.get_all_voice_antistress_configs()
+        now = time.time()
         for cfg in configs:
+            interval = int(cfg.get("check_interval_seconds") or 30)
+            key = (cfg["guild_id"], cfg["channel_id"])
+            if (now - _last_voice_check.get(key, 0)) < interval:
+                continue
+
+            _last_voice_check[key] = now
+
             guild = bot.get_guild(cfg["guild_id"])
             if not guild:
                 continue
