@@ -274,3 +274,12 @@ async def restore_from_db(guild: discord.Guild, db) -> None:
         await _apply_channel_denials(guild, role)
         logger.info("Permissions de quarantaine restaurées sur %s (%d membre(s) actif(s))",
                      guild.name, count)
+
+
+async def quarantine_member(guild: discord.Guild, member: discord.Member, reason: str, db=None, append_evidence=None) -> bool:
+    """Fonction wrapper de compatibilité pour isoler un membre."""
+    async def _dummy_append(*args, **kwargs):
+        pass
+    ev_callback = append_evidence or _dummy_append
+    ch = await quarantine(member, reason, db=db, append_evidence=ev_callback)
+    return bool(ch)

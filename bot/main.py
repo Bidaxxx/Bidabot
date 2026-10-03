@@ -252,22 +252,27 @@ async def _handle_web_action(payload: dict):
         if target_id and guild:
             try:
                 member = guild.get_member(int(target_id))
+                if not member:
+                    try:
+                        member = await guild.fetch_member(int(target_id))
+                    except Exception:
+                        member = None
                 if member:
                     await member.kick(reason=reason)
+                    await _append_evidence(guild.id, "member_kicked_via_web", {
+                        "user_id": int(target_id),
+                        "reason": reason,
+                        "admin_id": payload.get("user_id"),
+                    })
+                    await guild_dashboard.send_alert(
+                        guild,
+                        title="👢 Membre Expulsé depuis la Console Web",
+                        description=f"L'utilisateur <@{target_id}> (`{target_id}`) a été expulsé.\n• Motif : **{reason}**",
+                        color=0xFFAA00,
+                    )
+                    logger.info("Membre %s expulsé depuis le Dashboard Web sur %s", target_id, guild.name)
                 else:
-                    await guild.kick(discord.Object(id=int(target_id)), reason=reason)
-                await _append_evidence(guild.id, "member_kicked_via_web", {
-                    "user_id": int(target_id),
-                    "reason": reason,
-                    "admin_id": payload.get("user_id"),
-                })
-                await guild_dashboard.send_alert(
-                    guild,
-                    title="👢 Membre Expulsé depuis la Console Web",
-                    description=f"L'utilisateur <@{target_id}> (`{target_id}`) a été expulsé.\n• Motif : **{reason}**",
-                    color=0xFFAA00,
-                )
-                logger.info("Membre %s expulsé depuis le Dashboard Web sur %s", target_id, guild.name)
+                    logger.warning("Membre %s introuvable sur %s pour kick", target_id, guild.name)
             except Exception as e:
                 logger.error("Erreur kick web pour %s : %s", target_id, e)
     elif action == "timeout":
@@ -277,6 +282,11 @@ async def _handle_web_action(payload: dict):
         if target_id and guild:
             try:
                 member = guild.get_member(int(target_id))
+                if not member:
+                    try:
+                        member = await guild.fetch_member(int(target_id))
+                    except Exception:
+                        member = None
                 if member:
                     until = (
                         discord.utils.utcnow() + datetime.timedelta(seconds=duration_seconds)
@@ -303,23 +313,44 @@ async def _handle_web_action(payload: dict):
                         color=0xFF9900 if duration_seconds > 0 else 0x00FF88,
                     )
                     logger.info("Membre %s timeout=%ds sur %s", target_id, duration_seconds, guild.name)
+                else:
+                    logger.warning("Membre %s introuvable sur %s pour timeout", target_id, guild.name)
             except Exception as e:
                 logger.error("Erreur timeout web pour %s : %s", target_id, e)
     elif action == "quarantine":
         target_id = payload.get("target_id")
-        member = guild.get_member(int(target_id)) if target_id else None
-        if member:
-            reason = payload.get("reason", "Quarantaine appliquée depuis le Dashboard Web")
-            await quarantine.quarantine(
-                member, reason=reason, db=db, append_evidence=_append_evidence,
-            )
+        if target_id and guild:
+            member = guild.get_member(int(target_id))
+            if not member:
+                try:
+                    member = await guild.fetch_member(int(target_id))
+                except Exception:
+                    member = None
+            if member:
+                reason = payload.get("reason", "Quarantaine appliquée depuis le Dashboard Web")
+                await quarantine.quarantine(
+                    member, reason=reason, db=db, append_evidence=_append_evidence,
+                )
     elif action == "unquarantine":
         target_id = payload.get("target_id")
-        member = guild.get_member(int(target_id)) if target_id else None
-        if member:
-            await quarantine.release(
-                member, db=db, append_evidence=_append_evidence,
-            )
+        if target_id and guild:
+            member = guild.get_member(int(target_id))
+            if not member:
+                try:
+                    member = await guild.fetch_member(int(target_id))
+                except Exception:
+                    member = None
+            if member:
+                await quarantine.release(
+                    member, db=db, append_evidence=_append_evidence,
+                )
+    elif action == "update_alerts_channel":
+        ch_id = payload.get("channel_id")
+        if ch_id and guild:
+            ch = guild.get_channel(int(ch_id))
+            if ch and isinstance(ch, discord.TextChannel):
+                guild_dashboard._alerts_channels[guild.id] = ch
+                logger.info("Salon d'alertes staff réassigné sur #%s (%d) pour %s", ch.name, ch.id, guild.name)
     elif action == "voice_renew":
         ch_id = payload.get("channel_id")
         channel = guild.get_channel(int(ch_id)) if ch_id else None

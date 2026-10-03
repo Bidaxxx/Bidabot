@@ -19,11 +19,14 @@ permettre la restauration d'état après restart.
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime, timezone
 from typing import Any, Optional
 
 import asyncpg
 from pgvector.asyncpg import register_vector
+
+logger = logging.getLogger("sentinel.db")
 
 
 class Database:

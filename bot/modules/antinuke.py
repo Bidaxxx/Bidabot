@@ -211,7 +211,7 @@ async def check_action(
     # ── Détection des Heures d'Anomalie (Raid Nocturne Staff Compromis) ──
     # Entre minuit et 6h du matin, la sensibilité est doublée (seuil abaissé)
     now_utc = discord.utils.utcnow()
-    is_night_anomaly = now_utc.hour in (0, 1, 2, 3, 4, 5)
+    is_night_anomaly = (now_utc.hour in (0, 1, 2, 3, 4, 5)) and (custom_thresholds is None)
     effective_limit = max(1, limit - 1) if is_night_anomaly else limit
 
     logger.info(

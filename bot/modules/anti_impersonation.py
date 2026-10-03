@@ -198,12 +198,21 @@ async def handle_impersonation(
 
     # 2. Mise en quarantaine si disponible
     quarantined = False
-    if quarantine_module and hasattr(quarantine_module, "quarantine_member"):
+    if quarantine_module:
         try:
-            quarantined = await quarantine_module.quarantine_member(
-                guild, member, db=db,
-                reason=f"Usurpation du staff ({target_name} - score {score:.2f})",
-            )
+            if hasattr(quarantine_module, "quarantine"):
+                ch = await quarantine_module.quarantine(
+                    member,
+                    reason=f"Usurpation du staff ({target_name} - score {score:.2f})",
+                    db=db,
+                    append_evidence=append_evidence,
+                )
+                quarantined = bool(ch)
+            elif hasattr(quarantine_module, "quarantine_member"):
+                quarantined = await quarantine_module.quarantine_member(
+                    guild, member, db=db,
+                    reason=f"Usurpation du staff ({target_name} - score {score:.2f})",
+                )
         except Exception as e:
             logger.debug("Échec de la quarantaine : %s", e)
 

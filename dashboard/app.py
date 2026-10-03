@@ -22,6 +22,7 @@ import datetime
 import json
 import logging
 import urllib.parse
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 try:
@@ -31,7 +32,7 @@ except Exception:
 
 import aiohttp
 from fastapi import FastAPI, Request, Form, Depends, HTTPException, Response
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -131,8 +132,8 @@ async def dispatch_bot_action(action: str, guild_id: int, **data):
         logger.error("Erreur lors de la publication Redis pour l'action %s : %s", action, e)
 
 
-@app.on_event("startup")
-async def startup():
+@asynccontextmanager
+async def lifespan(app_instance: FastAPI):
     global signing_key
     try:
         await db.connect()
@@ -146,10 +147,7 @@ async def startup():
         signing_key = load_or_create_signing_key(settings.signing_key_path)
     except Exception as e:
         logger.warning("Clé de signature différée : %s", e)
-
-
-@app.on_event("shutdown")
-async def shutdown():
+    yield
     try:
         await db.close()
     except Exception:
@@ -158,6 +156,8 @@ async def shutdown():
         await cache.close()
     except Exception:
         pass
+
+app.router.lifespan_context = lifespan
 
 
 def require_auth(request: Request) -> dict:
@@ -172,9 +172,21 @@ def require_auth(request: Request) -> dict:
     return user
 
 
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon_route():
+    fav_file = static_dir / "favicon.svg"
+    return FileResponse(fav_file, media_type="image/svg+xml")
+
+
+@app.get("/robots.txt", include_in_schema=False)
+async def robots_route():
+    rob_file = static_dir / "robots.txt"
+    return FileResponse(rob_file, media_type="text/plain")
+
+
 # ─── Vitrine Publique ──────────────────────────────────────────────────
 
-@app.get("/", response_class=HTMLResponse)
+@app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
 async def home(request: Request):
     """Page d'accueil vitrine moderne avec explorer de fonctionnalités."""
     client_id = get_client_id()
@@ -188,7 +200,7 @@ async def home(request: Request):
 
 # ─── Authentification Discord OAuth2 & Staff ───────────────────────────
 
-@app.get("/login", response_class=HTMLResponse)
+@app.api_route("/login", methods=["GET", "HEAD"], response_class=HTMLResponse)
 async def login_page(request: Request):
     if request.session.get("authenticated"):
         return RedirectResponse("/dashboard", status_code=303)
@@ -352,7 +364,7 @@ async def logout(request: Request):
 
 # ─── Sélecteur de Serveurs (/dashboard) ───────────────────────────────
 
-@app.get("/dashboard", response_class=HTMLResponse)
+@app.api_route("/dashboard", methods=["GET", "HEAD"], response_class=HTMLResponse)
 async def servers_view(request: Request, user: dict = Depends(require_auth)):
     """Affiche la liste élégante des serveurs gérés par Sentinel."""
     client_id = get_client_id()
@@ -403,7 +415,7 @@ async def servers_view(request: Request, user: dict = Depends(require_auth)):
 
 # ─── Console de Gestion Dédiée (/dashboard/{guild_id}) ────────────────
 
-@app.get("/dashboard/{guild_id}", response_class=HTMLResponse)
+@app.api_route("/dashboard/{guild_id}", methods=["GET", "HEAD"], response_class=HTMLResponse)
 async def guild_dashboard_view(request: Request, guild_id: int, user: dict = Depends(require_auth)):
     """Panneau de contrôle principal pour un serveur spécifique."""
     # Vérification d'autorisation (sauf si root)
@@ -873,14 +885,6 @@ async def tab_channels(request: Request, guild_id: int, user: dict = Depends(req
     })
 
 
-@app.get("/dashboard/{guild_id}/tab/console", response_class=HTMLResponse)
-async def tab_console(request: Request, guild_id: int, user: dict = Depends(require_auth)):
-    return render(request, "partials/_tab_console.html", {
-        "request": request,
-        "guild_id": guild_id,
-    })
-
-
 # ─── Endpoints d'Actions Directes (Pilotage Bot en 1 Clic) ────────────
 
 @app.post("/api/guild/{guild_id}/lockdown")
@@ -1161,26 +1165,6 @@ async def action_voice_measure_ping(guild_id: int, channel_id: int, user: dict =
         "status_label": "Excellent" if ping < 50 else ("Correct" if ping < 150 else "Critique"),
     }
 
-
-@app.post("/api/guild/{guild_id}/backup/create")
-async def action_backup_create(guild_id: int, label: str = Form("Manuel"), user: dict = Depends(require_auth)):
-    """Déclenche la capture immédiate d'un snapshot de structure du serveur."""
-    await dispatch_bot_action("backup_create", guild_id, label=label, user_id=user["id"])
-    return {"status": "ok", "message": "Capture de snapshot envoyée au Bot."}
-
-
-@app.post("/api/guild/{guild_id}/backup/restore/{snapshot_id}")
-async def action_backup_restore(guild_id: int, snapshot_id: int, user: dict = Depends(require_auth)):
-    """Déclenche la restauration chirurgicale d'un snapshot sur le serveur Discord."""
-    await dispatch_bot_action("backup_restore", guild_id, snapshot_id=snapshot_id, user_id=user["id"])
-    return {"status": "ok", "snapshot_id": snapshot_id}
-
-
-@app.post("/api/guild/{guild_id}/backup/delete/{snapshot_id}")
-async def action_backup_delete(guild_id: int, snapshot_id: int, user: dict = Depends(require_auth)):
-    """Supprime définitivement un snapshot de sauvegarde."""
-    await db.delete_guild_snapshot(snapshot_id, guild_id)
-    return {"status": "ok", "snapshot_id": snapshot_id}
 
 
 
@@ -1875,6 +1859,7 @@ async def api_alerts_save(
                WHERE guild_id = $3""",
             ch_id, admin_dm, guild_id
         )
+    await dispatch_bot_action("update_alerts_channel", guild_id, channel_id=ch_id, admin_dm=admin_dm, user_id=user["id"])
     return {"status": "ok", "channel_id": ch_id, "admin_alerts_dm": admin_dm}
 
 
