@@ -113,16 +113,35 @@ async def renew_voice_channel(
     if not bot_perms.move_members:
         raise PermissionError("Le bot n'a pas la permission 'Déplacer les membres' sur ce serveur.")
 
-    # 1. Capture des membres connectés avant toute modification
-    connected_members = list(channel.members)
-    member_count = len(connected_members)
+    # 1. Capture exhaustive des membres connectés avant toute modification
+    connected_members: list[discord.Member] = []
     old_id = channel.id
     old_name = channel.name
     old_position = channel.position
     old_category = channel.category
 
+    # Inspection prioritaire de guild.voice_states (contient TOUS les utilisateurs connectés en vocal même si non chunkés)
+    if hasattr(guild, "voice_states") and guild.voice_states:
+        for user_id, vs in guild.voice_states.items():
+            if vs and vs.channel and vs.channel.id == old_id:
+                m = guild.get_member(user_id)
+                if not m:
+                    try:
+                        m = await guild.fetch_member(user_id)
+                    except Exception:
+                        m = None
+                if m and m not in connected_members:
+                    connected_members.append(m)
+
+    # Complément avec channel.members
+    for m in getattr(channel, "members", []):
+        if m and m not in connected_members:
+            connected_members.append(m)
+
+    member_count = len(connected_members)
+
     logger.info(
-        "Début du renouvellement anti-stresseur pour le vocal '%s' (ID %s) avec %d membres connectés",
+        "Début du renouvellement anti-stresseur pour le vocal '%s' (ID %s) avec %d membres détectés",
         old_name, old_id, member_count,
     )
 
@@ -145,13 +164,12 @@ async def renew_voice_channel(
     # 3. Déplacement des membres connectés vers le nouveau salon
     moved_count = 0
     for member in connected_members:
-        # Vérifie si le membre est toujours en vocal dans l'ancien salon
-        if member.voice and member.voice.channel and member.voice.channel.id == old_id:
-            try:
-                await member.move_to(new_channel, reason=f"SENTINEL — {reason}")
-                moved_count += 1
-            except discord.HTTPException as e:
-                logger.warning("Échec déplacement du membre %s (%s) : %s", member.display_name, member.id, e)
+        try:
+            await member.move_to(new_channel, reason=f"SENTINEL — {reason}")
+            moved_count += 1
+            logger.info("Membre %s (%s) déplacé avec succès vers nouveau vocal #%s", member.display_name, member.id, new_channel.name)
+        except discord.HTTPException as e:
+            logger.warning("Échec déplacement du membre %s (%s) : %s", member.display_name, member.id, e)
 
     # 4. Suppression de l'ancien salon lagué/stressé
     try:

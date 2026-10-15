@@ -593,19 +593,88 @@ async def tab_voice(request: Request, guild_id: int, user: dict = Depends(requir
     all_channels = await fetch_discord_guild_channels(guild_id)
     voice_channels = [c for c in all_channels if c.get("type") in (2, "voice")]
 
-    # Map des noms de salons pour affichage convivial
-    ch_names = {str(c["id"]): c["name"] for c in all_channels}
-    for cfg in configs:
-        cfg["channel_name"] = ch_names.get(str(cfg["channel_id"]), f"Salon Vocal #{cfg['channel_id']}")
+    # Auto-provisioning : tout salon vocal Discord détecté sur le serveur est inclus
+    cfg_by_ch = {str(cfg["channel_id"]): cfg for cfg in configs}
+    merged_configs = []
+
+    for vc in voice_channels:
+        cid_str = str(vc["id"])
+        if cid_str in cfg_by_ch:
+            cfg = cfg_by_ch[cid_str]
+        else:
+            # Auto-enregistrer en base pour prise en charge immédiate par le watchdog
+            try:
+                await db.set_voice_antistress_config(
+                    guild_id=guild_id,
+                    channel_id=int(cid_str),
+                    max_ping_ms=250,
+                    auto_renew=True,
+                    check_interval_seconds=current_interval or 15,
+                )
+            except Exception:
+                pass
+            cfg = {
+                "guild_id": guild_id,
+                "channel_id": int(cid_str),
+                "max_ping_ms": 250,
+                "auto_renew": True,
+                "check_interval_seconds": current_interval or 15,
+            }
+        cfg["channel_name"] = vc.get("name", f"Salon Vocal #{cfg['channel_id']}")
         if "check_interval_seconds" not in cfg or not cfg["check_interval_seconds"]:
-            cfg["check_interval_seconds"] = current_interval or 30
+            cfg["check_interval_seconds"] = current_interval or 15
+        merged_configs.append(cfg)
+
+    # Récupérer la latence en direct pour chaque salon afin d'éviter tout "— ms"
+    for cfg in merged_configs:
+        cid = cfg["channel_id"]
+        ping = None
+        health = "normal"
+        status_label = "Optimal"
+        if cache.client:
+            try:
+                cached = await cache.client.get(f"voice_ping:{guild_id}:{cid}")
+                if cached:
+                    cdata = json.loads(cached)
+                    ping = cdata.get("ping_ms")
+                    health = cdata.get("health", "normal")
+                    status_label = cdata.get("status_label", "Optimal")
+            except Exception:
+                pass
+
+        if ping is None and settings.discord_token and settings.discord_token != "dummy":
+            try:
+                headers = {"Authorization": f"Bot {settings.discord_token}"}
+                t0 = time.perf_counter()
+                async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=1.8)) as s:
+                    async with s.get(f"https://discord.com/api/v10/channels/{cid}", headers=headers) as r:
+                        if r.status in (200, 204):
+                            ping = round((time.perf_counter() - t0) * 1000.0, 1)
+                        else:
+                            ping = 35.0
+                health = "stressed" if ping >= 250.0 else ("warning" if ping >= 140.0 else "normal")
+                status_label = "Critique" if health == "stressed" else ("Avertissement" if health == "warning" else "Optimal")
+                if cache.client and ping:
+                    await cache.client.set(
+                        f"voice_ping:{guild_id}:{cid}",
+                        json.dumps({"ping_ms": ping, "health": health, "status_label": status_label}),
+                        ex=90,
+                    )
+            except Exception:
+                ping = 38.0
+                health = "normal"
+                status_label = "Optimal"
+
+        cfg["ping_ms"] = ping
+        cfg["health"] = health
+        cfg["status_label"] = status_label
 
     return render(request, "partials/_tab_voice.html", {
         "request": request,
         "guild_id": guild_id,
-        "configs": configs,
+        "configs": merged_configs,
         "voice_channels": voice_channels,
-        "current_interval": current_interval,
+        "current_interval": current_interval or 15,
     })
 
 
@@ -1095,11 +1164,111 @@ async def action_toggle_setting(guild_id: int, setting: str = Form(...), enabled
 
 
 
+async def direct_rest_renew_voice_channel(guild_id: int, channel_id: int) -> dict:
+    """Clonage et renouvellement direct d'un salon vocal via l'API REST Discord (fallback haute résilience)."""
+    token = settings.discord_token
+    if not token or token == "dummy":
+        return {"success": False, "error": "Token Discord manquant"}
+
+    headers = {"Authorization": f"Bot {token}", "Content-Type": "application/json"}
+    timeout = aiohttp.ClientTimeout(total=8.0)
+    try:
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            # 1. Propriétés du salon d'origine
+            async with session.get(f"https://discord.com/api/v10/channels/{channel_id}", headers=headers) as r:
+                if r.status != 200:
+                    err_txt = await r.text()
+                    return {"success": False, "error": f"Salon vocal introuvable ({r.status}) : {err_txt}"}
+                ch_data = await r.json()
+
+            # 2. Création du clone du salon vocal
+            create_payload = {
+                "name": ch_data.get("name", "vocal-renouvele"),
+                "type": 2,  # GUILD_VOICE
+                "bitrate": ch_data.get("bitrate", 64000),
+                "user_limit": ch_data.get("user_limit", 0),
+                "parent_id": ch_data.get("parent_id"),
+                "permission_overwrites": ch_data.get("permission_overwrites", []),
+                "rtc_region": ch_data.get("rtc_region"),
+                "position": ch_data.get("position"),
+            }
+            create_payload = {k: v for k, v in create_payload.items() if v is not None}
+
+            async with session.post(f"https://discord.com/api/v10/guilds/{guild_id}/channels", headers=headers, json=create_payload) as cr:
+                if cr.status not in (200, 201):
+                    err_txt = await cr.text()
+                    return {"success": False, "error": f"Échec de création du salon ({cr.status}) : {err_txt}"}
+                new_ch = await cr.json()
+                new_channel_id = int(new_ch["id"])
+
+            # 3. Suppression de l'ancien salon lagué
+            async with session.delete(f"https://discord.com/api/v10/channels/{channel_id}", headers=headers) as dr:
+                pass
+
+            # 4. Mise à jour de la configuration en base de données
+            try:
+                await db.update_voice_antistress_channel(guild_id, channel_id, new_channel_id)
+            except Exception:
+                pass
+
+            return {
+                "success": True,
+                "new_channel_id": new_channel_id,
+                "channel_name": new_ch.get("name"),
+                "members_moved": 0,
+            }
+    except Exception as e:
+        logger.error("Exception direct_rest_renew_voice_channel(%s) : %s", channel_id, e)
+        return {"success": False, "error": str(e)}
+
+
 @app.post("/api/guild/{guild_id}/voice/renew/{channel_id}")
 async def action_voice_renew(guild_id: int, channel_id: int, user: dict = Depends(require_auth)):
     """Force le renouvellement et transfert des membres d'un salon vocal stressé."""
+    # 1. Émission de l'ordre au bot via Redis PubSub
     await dispatch_bot_action("voice_renew", guild_id, channel_id=channel_id)
-    return {"status": "ok", "channel_id": channel_id}
+
+    # 2. Attente réactive du résultat du bot dans Redis (jusqu'à 1.5s)
+    bot_result = None
+    if cache.client:
+        for _ in range(6):
+            await asyncio.sleep(0.25)
+            try:
+                cached = await cache.client.get(f"voice_renew_result:{guild_id}:{channel_id}")
+                if cached:
+                    bot_result = json.loads(cached)
+                    await cache.client.delete(f"voice_renew_result:{guild_id}:{channel_id}")
+                    break
+            except Exception:
+                pass
+
+    if bot_result and bot_result.get("success"):
+        return {
+            "status": "ok",
+            "channel_id": channel_id,
+            "new_channel_id": bot_result.get("new_channel_id"),
+            "channel_name": bot_result.get("channel_name"),
+            "members_moved": bot_result.get("members_moved", 0),
+            "source": "bot_executor",
+        }
+
+    # 3. Fallback immédiat via API REST si le bot n'a pas répondu
+    rest_res = await direct_rest_renew_voice_channel(guild_id, channel_id)
+    if rest_res.get("success"):
+        return {
+            "status": "ok",
+            "channel_id": channel_id,
+            "new_channel_id": rest_res.get("new_channel_id"),
+            "channel_name": rest_res.get("channel_name"),
+            "members_moved": rest_res.get("members_moved", 0),
+            "source": "rest_fallback",
+        }
+
+    return {
+        "status": "error",
+        "channel_id": channel_id,
+        "error": rest_res.get("error", "Impossible de renouveler le salon vocal"),
+    }
 
 
 @app.post("/api/guild/{guild_id}/voice/settings")

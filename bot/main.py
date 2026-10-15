@@ -186,7 +186,11 @@ async def _handle_web_action(payload: dict):
         return
     guild = bot.get_guild(int(guild_id))
     if not guild:
-        return
+        try:
+            guild = await bot.fetch_guild(int(guild_id))
+        except Exception as e:
+            logger.warning("Serveur introuvable pour action '%s' (guild_id=%s) : %s", action, guild_id, e)
+            return
 
     logger.info("📡 Action Dashboard reçue : '%s' pour %s (%d)", action, guild.name, guild.id)
 
@@ -353,27 +357,59 @@ async def _handle_web_action(payload: dict):
                 logger.info("Salon d'alertes staff réassigné sur #%s (%d) pour %s", ch.name, ch.id, guild.name)
     elif action == "voice_renew":
         ch_id = payload.get("channel_id")
+        logger.info("📡 Exécution renouvellement vocal demandé pour salon ID %s sur %s", ch_id, guild.name)
         channel = guild.get_channel(int(ch_id)) if ch_id else None
-        if channel and isinstance(channel, discord.VoiceChannel):
-            await voice_antistress.renew_voice_channel(
-                channel, reason="Renouvellement forcé depuis le Dashboard Web",
-                append_evidence=_append_evidence, db=db,
-            )
+        if not channel and ch_id:
+            try:
+                channel = await bot.fetch_channel(int(ch_id))
+            except Exception as e:
+                logger.error("Impossible de fetch le salon vocal %s : %s", ch_id, e)
+                channel = None
+        if channel and isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
+            try:
+                new_vc, count = await voice_antistress.renew_voice_channel(
+                    channel, reason="Renouvellement forcé depuis le Dashboard Web",
+                    append_evidence=_append_evidence, db=db,
+                )
+                logger.info("Succès renouvellement vocal : #%s (ID %s) -> #%s (ID %s), %d membre(s) déplacés", channel.name, ch_id, new_vc.name, new_vc.id, count)
+                if cache.client:
+                    import json as _json
+                    await cache.client.set(
+                        f"voice_renew_result:{guild.id}:{ch_id}",
+                        _json.dumps({"success": True, "new_channel_id": new_vc.id, "channel_name": new_vc.name, "members_moved": count}),
+                        ex=60,
+                    )
+            except Exception as e:
+                logger.error("Erreur critique renew_voice_channel(%s) : %s", ch_id, e, exc_info=True)
+                if cache.client:
+                    import json as _json
+                    await cache.client.set(
+                        f"voice_renew_result:{guild.id}:{ch_id}",
+                        _json.dumps({"success": False, "error": str(e)}),
+                        ex=60,
+                    )
+        else:
+            logger.warning("Salon vocal %s introuvable ou n'est pas un VoiceChannel sur %s", ch_id, guild.name)
     elif action == "voice_measure_ping":
         # Mesure la latence WebRTC d'un salon vocal et met le résultat en cache Redis
         ch_id = payload.get("channel_id")
         channel = guild.get_channel(int(ch_id)) if ch_id else None
-        if channel and isinstance(channel, discord.VoiceChannel):
+        if not channel and ch_id:
+            try:
+                channel = await bot.fetch_channel(int(ch_id))
+            except Exception:
+                channel = None
+        if channel and isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
             lat_info = await voice_antistress.measure_voice_latency(bot, channel, timeout=4.0)
             ping = lat_info.get("ping_ms")
             health = lat_info.get("status", "normal")
-            status_label = "Excellent" if ping and ping < 80 else ("Correct" if ping and ping < 150 else ("Avertissement" if ping and ping < 250 else "Critique"))
+            status_label = "Optimal" if ping and ping < 80 else ("Correct" if ping and ping < 150 else ("Avertissement" if ping and ping < 250 else "Critique"))
             if cache.client and ping is not None:
                 import json as _json
                 await cache.client.set(
                     f"voice_ping:{guild.id}:{channel.id}",
                     _json.dumps({"ping_ms": ping, "health": health, "status_label": status_label}),
-                    ex=60,  # expire après 60 secondes
+                    ex=90,
                 )
             logger.info("Mesure ping salon vocal #%s : %s ms (%s)", channel.name, ping, health)
     elif action == "voice_log_stress":
@@ -701,10 +737,18 @@ async def _voice_watchdog_task():
             if not guild:
                 continue
             channel = guild.get_channel(cfg["channel_id"])
-            if not channel or not isinstance(channel, discord.VoiceChannel):
+            if not channel and cfg.get("channel_id"):
+                try:
+                    channel = await bot.fetch_channel(cfg["channel_id"])
+                except Exception:
+                    channel = None
+            if not channel or not isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
                 continue
-            # Ne sonde que s'il y a des membres connectés
-            if not channel.members:
+            # Détection exhaustive : membres dans channel.members OU dans guild.voice_states
+            has_members = bool(getattr(channel, "members", None))
+            if not has_members and hasattr(guild, "voice_states") and guild.voice_states:
+                has_members = any(vs and vs.channel and vs.channel.id == channel.id for vs in guild.voice_states.values())
+            if not has_members:
                 continue
 
             lat_info = await voice_antistress.measure_voice_latency(bot, channel, timeout=3.5)

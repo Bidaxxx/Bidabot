@@ -162,8 +162,12 @@
                 {% endif %}
               </td>
               <td style="padding: 12px;">
-                <span id="ping_badge_{{ cfg.channel_id }}" class="status-pill status-protected" style="font-size: 10.5px; font-family: var(--font-mono, monospace);">
-                  — ms
+                <span id="ping_badge_{{ cfg.channel_id }}" class="status-pill {{ 'status-danger' if cfg.health == 'stressed' else ('status-warning' if cfg.health == 'warning' else 'status-protected') }}" style="font-size: 10.5px; font-family: var(--font-mono, monospace);">
+                  {% if cfg.ping_ms is not none %}
+                    {{ cfg.ping_ms }} ms ({{ cfg.status_label or 'Optimal' }})
+                  {% else %}
+                    — ms
+                  {% endif %}
                 </span>
               </td>
               <td style="padding: 12px; text-align: right; white-space: nowrap;">
@@ -388,11 +392,34 @@
   // Forcer la recréation immédiate d'un salon vocal
   async function renewVoiceChannel(guildId, channelId) {
     if (!confirm("Forcer le renouvellement immédiat de ce salon vocal et le transfert des membres ?\n\nL'ancien salon sera détruit pour invalider la cible du stresseur et un nouveau salon sera recréé.")) return;
-    const res = await fetch(`/api/guild/${guildId}/voice/renew/${channelId}`, { method: 'POST' });
-    if (res.ok) {
-      if (typeof showToast === 'function') {
-        showToast("Salon vocal renouvelé — transfert des membres en cours.");
+    
+    // Feedback immédiat sur le bouton cliqué
+    const btn = event?.currentTarget;
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Recréation...";
+    }
+
+    try {
+      const res = await fetch(`/api/guild/${guildId}/voice/renew/${channelId}`, { method: 'POST' });
+      const data = await res.json();
+      if (res.ok && data.status === "ok") {
+        const movedText = (data.members_moved !== undefined && data.members_moved > 0) ? ` (${data.members_moved} membre(s) transféré(s))` : '';
+        if (typeof showToast === 'function') {
+          showToast(`Salon vocal renouvelé avec succès ! Nouveau salon #${data.channel_name || 'vocal'} créé${movedText}.`);
+        }
+        // Rechargement immédiat de l'onglet vocal pour faire apparaître le nouveau salon
+        setTimeout(() => _reloadVoiceTab(guildId), 900);
+      } else {
+        if (typeof showToast === 'function') {
+          showToast(data.error || "Erreur lors du renouvellement du salon vocal.", "warning");
+        }
+        if (btn) { btn.disabled = false; btn.textContent = "Renouveler"; }
       }
+    } catch (e) {
+      console.error(e);
+      if (typeof showToast === 'function') showToast("Erreur de connexion lors du renouvellement.", "warning");
+      if (btn) { btn.disabled = false; btn.textContent = "Renouveler"; }
     }
   }
 
@@ -451,4 +478,36 @@
   document.getElementById('logStressModal')?.addEventListener('click', function(e) {
     if (e.target === this) this.style.display = 'none';
   });
+
+  // ─── Monitoring en direct automatique des pings vocaux ──────────────
+  if (window._voicePingIntervalTimer) {
+    clearInterval(window._voicePingIntervalTimer);
+  }
+
+  function startVoiceLiveMonitoring() {
+    const channelIds = [{% for cfg in configs %}{{ cfg.channel_id }}{% if not loop.last %},{% endif %}{% endfor %}];
+    if (!channelIds.length) return;
+
+    // Fonction de rafraîchissement silencieux de tous les pings
+    const refreshAll = () => {
+      channelIds.forEach(cid => {
+        fetch(`/api/guild/{{ guild_id }}/voice/measure-ping/${cid}`, { method: 'POST' })
+          .then(r => r.json())
+          .then(data => {
+            const badge = document.getElementById(`ping_badge_${cid}`);
+            if (badge && data && data.ping_ms !== null && data.ping_ms !== undefined) {
+              _applyPingBadge(badge, data);
+            }
+          })
+          .catch(() => {});
+      });
+    };
+
+    // Rafraîchissement périodique calqué sur l'intervalle configuré
+    const intervalSec = parseInt('{{ current_interval or 15 }}') || 15;
+    window._voicePingIntervalTimer = setInterval(refreshAll, Math.max(5000, intervalSec * 1000));
+  }
+
+  // Démarrer la surveillance dès l'affichage de l'onglet
+  startVoiceLiveMonitoring();
 </script>
