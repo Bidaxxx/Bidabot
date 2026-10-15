@@ -50,17 +50,17 @@
             Enregistré
           </span>
           <div style="display: flex; gap: 4px; background: rgba(0, 0, 0, 0.3); padding: 3px; border-radius: 6px; border: 1px solid var(--border);">
-            <button class="filter-pill {{ 'active' if current_interval == 10 else '' }}" onclick="setGlobalVoiceInterval({{ guild_id }}, 10, this)">10s</button>
-            <button class="filter-pill {{ 'active' if current_interval == 15 else '' }}" onclick="setGlobalVoiceInterval({{ guild_id }}, 15, this)">15s</button>
-            <button class="filter-pill {{ 'active' if current_interval == 30 else '' }}" onclick="setGlobalVoiceInterval({{ guild_id }}, 30, this)">30s</button>
-            <button class="filter-pill {{ 'active' if current_interval == 60 else '' }}" onclick="setGlobalVoiceInterval({{ guild_id }}, 60, this)">60s</button>
-            <button class="filter-pill {{ 'active' if current_interval == 120 else '' }}" onclick="setGlobalVoiceInterval({{ guild_id }}, 120, this)">120s</button>
+            <button class="filter-pill {{ 'active' if current_interval == 10 else '' }}" id="vpill_10" onclick="setGlobalVoiceInterval({{ guild_id }}, 10, this)">10s</button>
+            <button class="filter-pill {{ 'active' if current_interval == 15 else '' }}" id="vpill_15" onclick="setGlobalVoiceInterval({{ guild_id }}, 15, this)">15s</button>
+            <button class="filter-pill {{ 'active' if current_interval == 30 else '' }}" id="vpill_30" onclick="setGlobalVoiceInterval({{ guild_id }}, 30, this)">30s</button>
+            <button class="filter-pill {{ 'active' if current_interval == 60 else '' }}" id="vpill_60" onclick="setGlobalVoiceInterval({{ guild_id }}, 60, this)">60s</button>
+            <button class="filter-pill {{ 'active' if current_interval == 120 else '' }}" id="vpill_120" onclick="setGlobalVoiceInterval({{ guild_id }}, 120, this)">120s</button>
           </div>
           <div style="display: flex; align-items: center; gap: 4px;">
-            <input type="number" id="customIntervalInput" value="{{ current_interval }}" min="5" max="300" 
-                   onchange="setGlobalVoiceInterval({{ guild_id }}, this.value, null)"
+            <input type="number" id="customIntervalInput" value="{{ current_interval }}" min="5" max="300"
                    style="width: 58px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px; color: #fff; font-family: var(--font-mono, monospace); font-size: 12px; text-align: center;">
             <span style="font-size: 12px; color: var(--text-dim); font-family: var(--font-mono, monospace);">sec</span>
+            <button class="btn btn-secondary btn-sm" onclick="setGlobalVoiceIntervalCustom({{ guild_id }})" style="font-size: 11px; padding: 3px 8px; margin-left: 2px;">OK</button>
           </div>
         </div>
       </div>
@@ -95,14 +95,17 @@
         </select>
       </div>
 
-      <div style="width: 140px;">
+      <div style="width: 160px;">
         <label style="display: block; font-size: 11.5px; color: var(--text-muted); margin-bottom: 4px;">Check Ping :</label>
         <select id="newVoiceInterval" style="width: 100%; background: #12151e; border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; color: #fff; font-size: 12.5px; outline: none;">
-          <option value="10">Toutes les 10s</option>
-          <option value="15">Toutes les 15s</option>
-          <option value="30" selected>Toutes les 30s</option>
-          <option value="60">Toutes les 60s</option>
-          <option value="120">Toutes les 120s</option>
+          <option value="10" {% if current_interval == 10 %}selected{% endif %}>Toutes les 10s</option>
+          <option value="15" {% if current_interval == 15 %}selected{% endif %}>Toutes les 15s</option>
+          <option value="30" {% if current_interval == 30 or not current_interval %}selected{% endif %}>Toutes les 30s</option>
+          <option value="60" {% if current_interval == 60 %}selected{% endif %}>Toutes les 60s</option>
+          <option value="120" {% if current_interval == 120 %}selected{% endif %}>Toutes les 120s</option>
+          {% if current_interval not in [10, 15, 30, 60, 120] and current_interval %}
+            <option value="{{ current_interval }}" selected>Toutes les {{ current_interval }}s</option>
+          {% endif %}
         </select>
       </div>
 
@@ -145,8 +148,8 @@
                 <div style="font-weight: 600; color: #fff;">{{ cfg.channel_name }}</div>
                 <div style="font-family: var(--font-mono, monospace); font-size: 10.5px; color: var(--text-dim);">ID: {{ cfg.channel_id }}</div>
               </td>
-              <td style="padding: 12px; font-family: var(--font-mono, monospace); color: var(--text-muted);">
-                Toutes les {{ cfg.check_interval_seconds or 30 }}s
+              <td data-interval-cell style="padding: 12px; font-family: var(--font-mono, monospace); color: var(--text-muted);">
+                Toutes les {{ cfg.check_interval_seconds or current_interval or 30 }}s
               </td>
               <td style="padding: 12px; font-family: var(--font-mono, monospace); color: var(--text-muted);">
                 {{ cfg.max_ping_ms }} ms
@@ -160,13 +163,16 @@
               </td>
               <td style="padding: 12px;">
                 <span id="ping_badge_{{ cfg.channel_id }}" class="status-pill status-protected" style="font-size: 10.5px; font-family: var(--font-mono, monospace);">
-                  24 ms (Normal)
+                  — ms
                 </span>
               </td>
               <td style="padding: 12px; text-align: right; white-space: nowrap;">
-                <div style="display: inline-flex; gap: 6px;">
+                <div style="display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end;">
                   <button class="btn btn-secondary btn-sm" onclick="measureVoicePing({{ guild_id }}, {{ cfg.channel_id }})" title="Mesurer la latence WebRTC en direct" style="font-size: 11px; padding: 4px 8px;">
                     Tester ping
+                  </button>
+                  <button class="btn btn-secondary btn-sm" onclick="showLogStressModal({{ guild_id }}, {{ cfg.channel_id }}, '{{ cfg.channel_name|e }}')" title="Journaliser un stress dans les forensics" style="font-size: 11px; padding: 4px 8px; background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3); color: #fbbf24;">
+                    Log Stress
                   </button>
                   <button class="btn btn-secondary btn-sm" onclick="renewVoiceChannel({{ guild_id }}, {{ cfg.channel_id }})" title="Forcer la recréation et transfert des membres" style="font-size: 11px; padding: 4px 8px;">
                     Renouveler
@@ -191,17 +197,56 @@
 
 </div>
 
+<!-- Modal Log Stress -->
+<div id="logStressModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); z-index: 9000; align-items: center; justify-content: center;">
+  <div style="background: #0e1017; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 24px; width: 460px; max-width: 92vw;">
+    <div style="font-size: 14px; font-weight: 700; color: #fbbf24; margin-bottom: 6px;">Journaliser un Stress Vocal</div>
+    <div style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 16px;">
+      Enregistre manuellement un événement de stress ou d'attaque sur ce salon dans la chaîne forensique immuable du site.
+    </div>
+    <div style="font-size: 11.5px; color: var(--text-dim); margin-bottom: 6px;" id="logStressChannelLabel">Salon : —</div>
+    <textarea id="logStressDesc" rows="3" placeholder="Description du stress observé (ex: lag, flood de connexions, coupures audio...)"
+      style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: #fff; font-size: 12px; resize: vertical; box-sizing: border-box; margin-bottom: 14px;"></textarea>
+    <div style="display: flex; gap: 8px; justify-content: flex-end;">
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('logStressModal').style.display='none'">Annuler</button>
+      <button class="btn btn-primary btn-sm" onclick="submitLogStress()" style="background: rgba(245,158,11,0.2); border-color: rgba(245,158,11,0.5); color: #fbbf24;">Journaliser</button>
+    </div>
+  </div>
+</div>
+
 <script>
-  // Enregistrement d'un nouvel intervalle global de surveillance
+  let _logStressGuildId = null;
+  let _logStressChannelId = null;
+
+  // ─── Intervalle global : mise à jour SANS recharger la page ───────────
   async function setGlobalVoiceInterval(guildId, seconds, btn) {
     seconds = parseInt(seconds) || 30;
-    if (btn) {
-      document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
-      btn.classList.add('active');
-    }
+
+    // Mise à jour visuelle immédiate des pills
+    document.querySelectorAll('.filter-pill[id^="vpill_"]').forEach(p => p.classList.remove('active'));
+    if (btn) btn.classList.add('active');
     const input = document.getElementById('customIntervalInput');
     if (input) input.value = seconds;
 
+    await _saveVoiceInterval(guildId, seconds);
+  }
+
+  async function setGlobalVoiceIntervalCustom(guildId) {
+    const input = document.getElementById('customIntervalInput');
+    const seconds = Math.max(5, Math.min(300, parseInt(input?.value) || 30));
+    if (input) input.value = seconds;
+
+    // Désactiver toutes les pills préétablies si valeur personnalisée
+    const pills = [10, 15, 30, 60, 120];
+    pills.forEach(v => {
+      const p = document.getElementById(`vpill_${v}`);
+      if (p) p.classList.toggle('active', v === seconds);
+    });
+
+    await _saveVoiceInterval(guildId, seconds);
+  }
+
+  async function _saveVoiceInterval(guildId, seconds) {
     const form = new FormData();
     form.append('check_interval_seconds', seconds);
 
@@ -214,18 +259,42 @@
         const badge = document.getElementById('intervalSavedBadge');
         if (badge) {
           badge.style.opacity = '1';
-          setTimeout(() => { badge.style.opacity = '0'; }, 2000);
+          setTimeout(() => { badge.style.opacity = '0'; }, 2500);
         }
         if (typeof showToast === 'function') {
           showToast(`Intervalle de check vocal défini à ${seconds}s`);
         }
-        // Rafraîchit les affichages
-        setTimeout(() => {
-          htmx.ajax('GET', `/dashboard/${guildId}/tab/voice`, { target: '#tab-content', swap: 'innerHTML' });
-        }, 500);
+        // Met à jour l'affichage dans le formulaire d'ajout et le champ personnalisé
+        const sel = document.getElementById('newVoiceInterval');
+        if (sel) sel.value = String(seconds);
+        const inp = document.getElementById('customIntervalInput');
+        if (inp) inp.value = seconds;
+
+        // Met à jour l'affichage dans le tableau sans rechargement complet
+        document.querySelectorAll('td[data-interval-cell]').forEach(td => {
+          td.textContent = `Toutes les ${seconds}s`;
+        });
+      } else {
+        if (typeof showToast === 'function') showToast('Erreur lors de la mise à jour de l\'intervalle.', 'warning');
       }
     } catch (e) {
       console.error(e);
+    }
+  }
+
+  async function _reloadVoiceTab(guildId) {
+    const target = document.getElementById('tab-content');
+    try {
+      const res = await fetch(`/dashboard/${guildId}/tab/voice`);
+      if (res.ok && target) {
+        target.innerHTML = await res.text();
+        return;
+      }
+    } catch (e) {
+      console.warn("Erreur rechargement natif voice :", e);
+    }
+    if (target && typeof htmx !== 'undefined' && htmx.ajax) {
+      htmx.ajax('GET', `/dashboard/${guildId}/tab/voice`, { target: '#tab-content', swap: 'innerHTML' });
     }
   }
 
@@ -253,28 +322,67 @@
       if (typeof showToast === 'function') {
         showToast("Salon vocal ajouté à la surveillance.");
       }
-      htmx.ajax('GET', `/dashboard/${guildId}/tab/voice`, { target: '#tab-content', swap: 'innerHTML' });
+      await _reloadVoiceTab(guildId);
+    } else {
+      if (typeof showToast === 'function') showToast("Erreur lors de l'ajout du salon.");
     }
   }
 
-  // Mesure du ping WebRTC en direct
+  // Mesure du ping WebRTC en direct avec polling automatique
   async function measureVoicePing(guildId, channelId) {
     const badge = document.getElementById(`ping_badge_${channelId}`);
-    if (badge) badge.textContent = "Mesure...";
+    if (badge) {
+      badge.textContent = "Mesure...";
+      badge.className = "status-pill";
+      badge.style.color = "#94a3b8";
+    }
 
     try {
       const res = await fetch(`/api/guild/${guildId}/voice/measure-ping/${channelId}`, { method: 'POST' });
       const data = await res.json();
-      if (badge && data.ping_ms) {
-        badge.textContent = `${data.ping_ms} ms (${data.status_label || 'Normal'})`;
-        badge.className = `status-pill ${data.health === 'stressed' ? 'status-danger' : (data.health === 'warning' ? 'status-warning' : 'status-protected')}`;
+
+      if (data.status === 'pending') {
+        // Affichage "en cours" et re-poll dans 3 secondes
+        if (badge) badge.textContent = "En cours...";
+        if (typeof showToast === 'function') showToast("Mesure de ping demandée au bot, résultat dans ~3s...");
+        setTimeout(() => _pollVoicePing(guildId, channelId, 3), 3000);
+        return;
       }
+
+      _applyPingBadge(badge, data);
       if (typeof showToast === 'function') {
-        showToast(`Latence salon #${channelId} : ${data.ping_ms} ms`);
+        showToast(`Latence salon #${channelId} : ${data.ping_ms} ms (${data.status_label || 'Normal'})`);
       }
     } catch (e) {
       console.error(e);
+      if (badge) badge.textContent = "Erreur";
     }
+  }
+
+  async function _pollVoicePing(guildId, channelId, retriesLeft) {
+    if (retriesLeft <= 0) return;
+    try {
+      const res = await fetch(`/api/guild/${guildId}/voice/measure-ping/${channelId}`, { method: 'POST' });
+      const data = await res.json();
+      const badge = document.getElementById(`ping_badge_${channelId}`);
+      if (data.status === 'ok' && data.ping_ms !== null) {
+        _applyPingBadge(badge, data);
+        if (typeof showToast === 'function') showToast(`Ping mesuré : ${data.ping_ms} ms (${data.status_label})`);
+      } else {
+        setTimeout(() => _pollVoicePing(guildId, channelId, retriesLeft - 1), 3000);
+      }
+    } catch (e) { /* silencieux */ }
+  }
+
+  function _applyPingBadge(badge, data) {
+    if (!badge) return;
+    const ping = data.ping_ms;
+    if (ping === null || ping === undefined) { badge.textContent = "— ms"; return; }
+    badge.textContent = `${ping} ms (${data.status_label || 'Normal'})`;
+    const h = data.health || 'normal';
+    badge.className = `status-pill ${h === 'stressed' ? 'status-danger' : (h === 'warning' ? 'status-warning' : 'status-protected')}`;
+    badge.style.fontFamily = 'var(--font-mono, monospace)';
+    badge.style.fontSize = '10.5px';
   }
 
   // Forcer la recréation immédiate d'un salon vocal
@@ -283,7 +391,7 @@
     const res = await fetch(`/api/guild/${guildId}/voice/renew/${channelId}`, { method: 'POST' });
     if (res.ok) {
       if (typeof showToast === 'function') {
-        showToast("Salon vocal renouvelé et membres transférés avec succès.");
+        showToast("Salon vocal renouvelé — transfert des membres en cours.");
       }
     }
   }
@@ -296,7 +404,51 @@
       if (typeof showToast === 'function') {
         showToast("Salon retiré de la surveillance.");
       }
-      htmx.ajax('GET', `/dashboard/${guildId}/tab/voice`, { target: '#tab-content', swap: 'innerHTML' });
+      await _reloadVoiceTab(guildId);
     }
   }
+
+  // ─── Log Stress Modal ─────────────────────────────────────────────────
+  function showLogStressModal(guildId, channelId, channelName) {
+    _logStressGuildId = guildId;
+    _logStressChannelId = channelId;
+    const modal = document.getElementById('logStressModal');
+    const label = document.getElementById('logStressChannelLabel');
+    const desc = document.getElementById('logStressDesc');
+    if (label) label.textContent = `Salon : ${channelName} (ID: ${channelId})`;
+    if (desc) desc.value = '';
+    if (modal) modal.style.display = 'flex';
+  }
+
+  async function submitLogStress() {
+    const desc = document.getElementById('logStressDesc')?.value?.trim();
+    if (!desc) {
+      if (typeof showToast === 'function') showToast("Veuillez décrire le stress observé.");
+      return;
+    }
+
+    const form = new FormData();
+    form.append('channel_id', _logStressChannelId);
+    form.append('description', desc);
+
+    try {
+      const res = await fetch(`/api/guild/${_logStressGuildId}/voice/log-stress`, {
+        method: 'POST',
+        body: form
+      });
+      if (res.ok) {
+        document.getElementById('logStressModal').style.display = 'none';
+        if (typeof showToast === 'function') showToast("Stress vocal journalisé dans les preuves forensiques.");
+      } else {
+        if (typeof showToast === 'function') showToast("Erreur lors du journal du stress.");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // Fermer le modal en cliquant en dehors
+  document.getElementById('logStressModal')?.addEventListener('click', function(e) {
+    if (e.target === this) this.style.display = 'none';
+  });
 </script>

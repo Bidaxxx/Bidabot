@@ -227,6 +227,14 @@ async def measure_voice_latency(
     if has_nacl:
         vc = None
         try:
+            # S'assurer qu'aucun client vocal n'est déjà connecté sur ce serveur
+            if guild.voice_client:
+                try:
+                    await guild.voice_client.disconnect(force=True)
+                    await asyncio.sleep(0.2)
+                except Exception:
+                    pass
+
             # Connexion éphémère (timeout court pour détecter le lag)
             vc = await asyncio.wait_for(channel.connect(timeout=timeout, reconnect=False), timeout=timeout + 0.5)
             # Attente légère de négociation du protocole

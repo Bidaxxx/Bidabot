@@ -76,6 +76,23 @@
     </div>
   </footer>
 
-  <script src="/static/app.js?v=20261002_soc_v2"></script>
+  <script src="/static/app.js?v=20261002_soc_v3"></script>
+  <script>
+    if (!window.showToast) {
+      window.showToast = function(titleOrMsg, descOrLevel, level = 'success') {
+        if (typeof window.showSocToast === 'function') {
+          if (descOrLevel && ['success', 'info', 'warning', 'critical'].includes(descOrLevel)) {
+            window.showSocToast('Sentinel SOC', titleOrMsg, descOrLevel);
+          } else if (descOrLevel) {
+            window.showSocToast(titleOrMsg, descOrLevel, level);
+          } else {
+            window.showSocToast('Sentinel SOC', titleOrMsg, 'success');
+          }
+        } else {
+          console.log(titleOrMsg);
+        }
+      };
+    }
+  </script>
 </body>
 </html>

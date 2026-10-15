@@ -26,14 +26,15 @@ class Cache:
 
     async def connect(self):
         try:
-            self.client = redis.from_url(self.url, decode_responses=True)
+            self.client = redis.from_url(self.url, decode_responses=True, socket_connect_timeout=1.5, socket_timeout=1.5)
             await self.client.ping()
         except Exception:
             if "@redis:" in self.url or "redis://redis" in self.url:
                 fallback_url = self.url.replace("@redis:", "@127.0.0.1:").replace("redis://redis:", "redis://127.0.0.1:")
-                self.client = redis.from_url(fallback_url, decode_responses=True)
+                self.client = redis.from_url(fallback_url, decode_responses=True, socket_connect_timeout=1.5, socket_timeout=1.5)
                 await self.client.ping()
             else:
+                self.client = None
                 raise
 
     async def close(self):

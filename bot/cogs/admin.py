@@ -1489,6 +1489,22 @@ class BidabotAdmin(commands.Cog):
         else:
             await interaction.response.send_message(f"❌ {msg}", ephemeral=True)
 
+    @voice_group.command(name="interval", description="Définit la fréquence de vérification du ping vocal pour ce serveur")
+    @app_commands.describe(seconds="Intervalle en secondes (5 à 300, ex: 10, 15, 30)")
+    async def voice_interval_cmd(self, interaction: discord.Interaction, seconds: int):
+        if not self._admin_only(interaction):
+            return await interaction.response.send_message("❌ Réservé aux administrateurs.", ephemeral=True)
+
+        interval = max(5, min(seconds, 300))
+        await self.db.set_guild_voice_interval(interaction.guild_id, interval)
+        if self.cache and self.cache.client:
+            await self.cache.client.set(f"voice_global_interval:{interaction.guild_id}", str(interval))
+        await interaction.response.send_message(
+            f"⏱️ **Intervalle anti-stresseur vocal défini à {interval}s !**\n"
+            f"Le bot vérifiera désormais la latence WebRTC de vos salons vocaux toutes les {interval} secondes.",
+            ephemeral=True,
+        )
+
     @voice_group.command(name="autoprotect", description="Active ou désactive la surveillance automatique anti-stresseur")
     @app_commands.describe(
         channel="Salon vocal à surveiller",
@@ -1503,10 +1519,14 @@ class BidabotAdmin(commands.Cog):
             return await interaction.response.send_message("❌ Réservé aux administrateurs.", ephemeral=True)
 
         if enable:
-            await self.db.set_voice_antistress_config(interaction.guild_id, channel.id, max_ping_ms=max_ping, auto_renew=True)
+            interval = await self.db.get_guild_voice_interval(interaction.guild_id)
+            await self.db.set_voice_antistress_config(
+                interaction.guild_id, channel.id, max_ping_ms=max_ping, auto_renew=True, check_interval_seconds=interval
+            )
             await interaction.response.send_message(
                 f"🛡️ **Surveillance Anti-Stresseur activée sur {channel.mention} !**\n"
                 f"• Seuil d'intervention : **{max_ping} ms**\n"
+                f"• Fréquence de contrôle : **Toutes les {interval}s**\n"
                 f"• Auto-réparation : **Activée** (recréation automatique & transfert des membres en cas de lag ou flood).",
                 ephemeral=True,
             )

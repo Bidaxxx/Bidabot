@@ -358,8 +358,36 @@
   function switchKeeperTab(btn, url) {
     document.querySelectorAll('.sidebar-item').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');
-    htmx.ajax('GET', url, { target: '#tab-content', swap: 'innerHTML' });
+
+    // Maintient l'onglet actif dans l'URL pour ne jamais perdre sa position au rechargement
+    try {
+      const match = url.match(/\/tab\/([a-z0-9_-]+)/);
+      if (match) {
+        history.replaceState(null, '', '#' + match[1]);
+      }
+    } catch (e) {}
+
+    const target = document.getElementById('tab-content');
+    if (typeof htmx !== 'undefined' && htmx.ajax) {
+      htmx.ajax('GET', url, { target: '#tab-content', swap: 'innerHTML' });
+    } else {
+      fetch(url)
+        .then(r => r.text())
+        .then(html => { if (target) target.innerHTML = html; })
+        .catch(err => console.error(err));
+    }
   }
+
+  // Rétablir automatiquement l'onglet selon le hash (#voice, #backups...) au chargement
+  window.addEventListener('DOMContentLoaded', () => {
+    const hash = (window.location.hash || '').replace('#', '').trim();
+    if (hash) {
+      const btn = document.getElementById('side_tab_' + hash);
+      if (btn) {
+        switchKeeperTab(btn, `/dashboard/{{ guild_id }}/tab/${hash}`);
+      }
+    }
+  });
 
   function searchSidebar(query) {
     query = query.toLowerCase().trim();

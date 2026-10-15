@@ -129,26 +129,63 @@
     }
   }
 
+  async function _reloadBackupsTab(guildId) {
+    const target = document.getElementById('tab-content');
+    try {
+      const res = await fetch(`/dashboard/${guildId}/tab/backups`);
+      if (res.ok && target) {
+        target.innerHTML = await res.text();
+        return;
+      }
+    } catch (e) {
+      console.warn("Erreur rechargement natif backups :", e);
+    }
+    if (target && typeof htmx !== 'undefined' && htmx.ajax) {
+      htmx.ajax('GET', `/dashboard/${guildId}/tab/backups`, { target: '#tab-content', swap: 'innerHTML' });
+    }
+  }
+
   async function handleCreateBackup(e, guildId) {
     e.preventDefault();
     const label = document.getElementById('backup-label-input').value.trim();
     if (!label) return;
 
+    const btn = e.submitter || e.target.querySelector('button[type="submit"]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Capture…'; }
+
     const fd = new FormData();
     fd.append('label', label);
 
-    const res = await fetch(`/api/guild/${guildId}/backup/create`, {
-      method: 'POST',
-      body: fd,
-    });
+    try {
+      const res = await fetch(`/api/guild/${guildId}/backup/create`, {
+        method: 'POST',
+        body: fd,
+      });
 
-    if (res.ok) {
-      if (typeof showToast === 'function') showToast("Snapshot de sauvegarde en cours de création...");
-      setTimeout(() => {
-        htmx.ajax('GET', `/dashboard/${guildId}/tab/backups`, { target: '#tab-content', swap: 'innerHTML' });
-      }, 700);
-    } else {
-      if (typeof showToast === 'function') showToast("Erreur lors de la création du snapshot.");
+      if (res.ok) {
+        const data = await res.json();
+        document.getElementById('create-backup-box').style.display = 'none';
+        document.getElementById('backup-label-input').value = '';
+
+        if (data.direct) {
+          if (typeof showToast === 'function') {
+            showToast(`Snapshot #${data.snapshot_id} "${label}" créé (${data.channels_count} salons, ${data.roles_count} rôles)`);
+          }
+          await _reloadBackupsTab(guildId);
+        } else {
+          if (typeof showToast === 'function') {
+            showToast("Snapshot demandé au bot...");
+          }
+          setTimeout(() => _reloadBackupsTab(guildId), 2500);
+        }
+      } else {
+        const err = await res.json().catch(() => ({}));
+        if (typeof showToast === 'function') showToast(`Erreur : ${err.detail || 'Impossible de créer le snapshot.'}`, 'warning');
+      }
+    } catch (err) {
+      if (typeof showToast === 'function') showToast("Erreur réseau lors de la création du snapshot.", 'critical');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Capturer maintenant'; }
     }
   }
 
@@ -159,12 +196,13 @@
 
     const res = await fetch(`/api/guild/${guildId}/backup/restore/${snapshotId}`, { method: 'POST' });
     if (res.ok) {
-      if (typeof showToast === 'function') showToast("Restauration du serveur déclenchée.");
-      setTimeout(() => {
-        htmx.ajax('GET', `/dashboard/${guildId}/tab/backups`, { target: '#tab-content', swap: 'innerHTML' });
-      }, 1000);
+      if (typeof showToast === 'function') showToast("Restauration déclenchée — le bot reconstruit les éléments manquants.");
+      setTimeout(() => _reloadBackupsTab(guildId), 1200);
+    } else if (res.status === 404) {
+      if (typeof showToast === 'function') showToast(`Snapshot #${snapshotId} introuvable ou ne correspond pas à ce serveur.`, 'warning');
     } else {
-      if (typeof showToast === 'function') showToast("Erreur lors de la restauration du snapshot.");
+      const err = await res.json().catch(() => ({}));
+      if (typeof showToast === 'function') showToast(`Erreur restauration : ${err.detail || 'Une erreur est survenue.'}`, 'warning');
     }
   }
 
@@ -174,9 +212,7 @@
     const res = await fetch(`/api/guild/${guildId}/backup/delete/${snapshotId}`, { method: 'POST' });
     if (res.ok) {
       if (typeof showToast === 'function') showToast("Snapshot supprimé.");
-      setTimeout(() => {
-        htmx.ajax('GET', `/dashboard/${guildId}/tab/backups`, { target: '#tab-content', swap: 'innerHTML' });
-      }, 300);
+      await _reloadBackupsTab(guildId);
     }
   }
 </script>

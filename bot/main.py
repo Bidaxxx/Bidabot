@@ -359,45 +359,42 @@ async def _handle_web_action(payload: dict):
                 channel, reason="Renouvellement forcé depuis le Dashboard Web",
                 append_evidence=_append_evidence, db=db,
             )
-    elif action == "backup_create":
-        label = payload.get("label", "Dashboard Web")
-        snap = await snapshot.capture_guild_snapshot(guild, label=label)
-        total_channels = snap["summary"]["text_channels_count"] + snap["summary"]["voice_channels_count"]
-        total_roles = snap["summary"]["roles_count"]
-        snap_id = await db.save_guild_snapshot(
-            guild.id, label, snap,
-            channels_count=total_channels,
-            roles_count=total_roles,
-        )
-        await _append_evidence(guild.id, "guild_snapshot_created", {
-            "snapshot_id": snap_id, "label": label, "summary": snap["summary"],
-            "triggered_by": "dashboard_web",
-        })
-        await guild_dashboard.send_alert(
-            guild, title="💾 SNAPSHOT DE SÉCURITÉ CRÉÉ",
-            description=f"Un snapshot de la structure du serveur (ID `#{snap_id}`, '{label}') a été enregistré avec succès depuis la console web.",
-            color=0x00FF88,
-        )
-    elif action == "backup_restore":
-        snapshot_id = payload.get("snapshot_id")
-        if snapshot_id:
-            row = await db.get_guild_snapshot_by_id(int(snapshot_id), guild.id)
-            if row:
-                stats = await snapshot.restore_guild_snapshot(guild, row["snapshot_data"])
-                await _append_evidence(guild.id, "guild_snapshot_restored", {
-                    "snapshot_id": int(snapshot_id), "stats": stats,
-                    "triggered_by": "dashboard_web",
-                })
-                await guild_dashboard.send_alert(
-                    guild, title="🛡️ RESTAURATION D'URGENCE EFFECTUÉE",
-                    description=(
-                        f"Restauration du snapshot `#{snapshot_id}` ('{row['label']}') terminée :\n"
-                        f"• Rôles recréés : **{stats['roles_restored']}**\n"
-                        f"• Catégories recréées : **{stats['categories_restored']}**\n"
-                        f"• Salons recréés : **{stats['channels_restored']}**"
-                    ),
-                    color=0x00FF88,
+    elif action == "voice_measure_ping":
+        # Mesure la latence WebRTC d'un salon vocal et met le résultat en cache Redis
+        ch_id = payload.get("channel_id")
+        channel = guild.get_channel(int(ch_id)) if ch_id else None
+        if channel and isinstance(channel, discord.VoiceChannel):
+            lat_info = await voice_antistress.measure_voice_latency(bot, channel, timeout=4.0)
+            ping = lat_info.get("ping_ms")
+            health = lat_info.get("status", "normal")
+            status_label = "Excellent" if ping and ping < 80 else ("Correct" if ping and ping < 150 else ("Avertissement" if ping and ping < 250 else "Critique"))
+            if cache.client and ping is not None:
+                import json as _json
+                await cache.client.set(
+                    f"voice_ping:{guild.id}:{channel.id}",
+                    _json.dumps({"ping_ms": ping, "health": health, "status_label": status_label}),
+                    ex=60,  # expire après 60 secondes
                 )
+            logger.info("Mesure ping salon vocal #%s : %s ms (%s)", channel.name, ping, health)
+    elif action == "voice_log_stress":
+        # Enregistre un événement de stress vocal dans la chaîne forensique
+        ch_id = payload.get("channel_id")
+        description = payload.get("description", "Stress vocal signalement manuel")
+        await _append_evidence(guild.id, "voice_stress_manual", {
+            "channel_id": ch_id,
+            "description": description,
+            "reported_by": payload.get("user_id"),
+            "source": "dashboard_manual",
+        })
+        logger.info("Stress vocal journalé manuellement pour le salon %s sur %s", ch_id, guild.name)
+    elif action == "voice_interval":
+        # Mise à jour de l'intervalle global de surveillance vocale
+        interval = int(payload.get("check_interval_seconds", 30))
+        interval = max(5, min(interval, 600))
+        await db.set_guild_voice_interval(guild.id, interval)
+        if cache.client:
+            await cache.client.set(f"voice_global_interval:{guild.id}", str(interval))
+        logger.info("Intervalle de surveillance vocale mis à jour : %ds pour %s", interval, guild.name)
     elif action == "raid_purge":
         window = int(payload.get("window_minutes", 45))
         suspects = await raid_purge.find_raid_suspects(guild, db, window_minutes=window)
@@ -447,32 +444,49 @@ async def _handle_web_action(payload: dict):
             deleted = await ch.purge(limit=count)
             await _append_evidence(guild.id, "channel_purged", {"channel_id": ch.id, "deleted": len(deleted)})
             logger.info("Purge de %d messages sur #%s depuis le Dashboard Web", len(deleted), ch.name)
-    elif action == "create_snapshot":
+    # Alias pour compatibilité ascendante (anciens noms d'actions)
+    elif action in ("create_snapshot", "backup_create"):
         label = payload.get("label", "Dashboard-Web")
         snap_data = await snapshot.capture_guild_snapshot(guild, label=label)
         ch_count = snap_data["summary"]["text_channels_count"] + snap_data["summary"]["voice_channels_count"]
         roles_count = snap_data["summary"]["roles_count"]
         snap_id = await db.save_guild_snapshot(
-            guild.id,
-            label,
-            snap_data,
-            channels_count=ch_count,
-            roles_count=roles_count,
+            guild.id, label, snap_data,
+            channels_count=ch_count, roles_count=roles_count,
         )
         await _append_evidence(guild.id, "guild_snapshot_created", {
-            "snapshot_id": snap_id,
-            "label": label,
-            "channels_count": ch_count,
-            "roles_count": roles_count,
+            "snapshot_id": snap_id, "label": label,
+            "channels_count": ch_count, "roles_count": roles_count,
+            "triggered_by": "dashboard_web",
         })
-        logger.info("Snapshot de sauvegarde #%d ('%s') créé pour %s", snap_id, label, guild.name)
-    elif action == "restore_snapshot":
+        await guild_dashboard.send_alert(
+            guild, title="Snapshot de Sécurité Créé",
+            description=f"Un snapshot de la structure du serveur (ID `#{snap_id}`, '{label}') a été enregistré avec succès depuis la console web.",
+            color=0x00FF88,
+        )
+        logger.info("Snapshot #%d ('%s') créé pour %s (%d salons, %d rôles)", snap_id, label, guild.name, ch_count, roles_count)
+    elif action in ("restore_snapshot", "backup_restore"):
         snapshot_id = int(payload.get("snapshot_id", 0))
         snap = await db.get_guild_snapshot_by_id(snapshot_id, guild.id)
         if snap and "snapshot_data" in snap:
             stats = await snapshot.restore_guild_snapshot(guild, snap["snapshot_data"])
-            await _append_evidence(guild.id, "guild_snapshot_restored", {"snapshot_id": snapshot_id, "stats": stats})
+            await _append_evidence(guild.id, "guild_snapshot_restored", {
+                "snapshot_id": snapshot_id, "stats": stats, "triggered_by": "dashboard_web",
+            })
+            await guild_dashboard.send_alert(
+                guild, title="Restauration d'Urgence Effectuée",
+                description=(
+                    f"Restauration du snapshot `#{snapshot_id}` ('{snap['label']}') terminée :\n"
+                    f"• Rôles recréés : **{stats['roles_restored']}**\n"
+                    f"• Catégories recréées : **{stats['categories_restored']}**\n"
+                    f"• Salons recréés : **{stats['channels_restored']}**"
+                ),
+                color=0x00FF88,
+            )
             logger.info("Snapshot #%d restauré sur %s : %s", snapshot_id, guild.name, stats)
+        else:
+            logger.warning("Snapshot #%d introuvable pour la restauration sur %s", snapshot_id, guild.name)
+
     elif action == "test_alert":
         target_uid = bot.user.id if bot.user else None
         await guild_dashboard.send_alert(
@@ -696,6 +710,20 @@ async def _voice_watchdog_task():
             lat_info = await voice_antistress.measure_voice_latency(bot, channel, timeout=3.5)
             ping = lat_info.get("ping_ms")
             status = lat_info.get("status")
+
+            # Mettre à jour le cache Redis pour que le dashboard puisse lire le ping en direct
+            if cache.client and ping is not None:
+                try:
+                    import json as _json
+                    _sl = "Excellent" if ping < 80 else ("Correct" if ping < 150 else ("Avertissement" if ping < 250 else "Critique"))
+                    _health = "normal" if ping < 150 else ("warning" if ping < 250 else "stressed")
+                    await cache.client.set(
+                        f"voice_ping:{guild.id}:{channel.id}",
+                        _json.dumps({"ping_ms": ping, "health": _health, "status_label": _sl}),
+                        ex=90,
+                    )
+                except Exception:
+                    pass
 
             if status == "stressed" or (ping is not None and ping >= cfg["max_ping_ms"]):
                 logger.warning(
@@ -1140,9 +1168,17 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
         logger.warning("Flood d'états vocaux sur le salon %s (ID %s, %d événements/6s)", channel.name, channel.id, count)
         guild = channel.guild
         configs = await db.get_voice_antistress_configs(guild.id)
-        is_protected = any(c["channel_id"] == channel.id and c["auto_renew"] for c in configs)
+        is_channel_protected = any(c["channel_id"] == channel.id and c["auto_renew"] for c in configs)
+        is_module_enabled = True
+        if cache.client:
+            try:
+                mod_flag = await cache.client.get(f"prot:{guild.id}:anti_voice_flood")
+                if mod_flag is not None:
+                    is_module_enabled = (mod_flag == "1")
+            except Exception:
+                pass
 
-        if is_protected:
+        if is_channel_protected or is_module_enabled:
             try:
                 new_ch, moved = await voice_antistress.renew_voice_channel(
                     channel,

@@ -101,6 +101,21 @@ window.showSocToast = function(title, desc, level = 'info') {
   }, 5000);
 };
 
+// Alias de compatibilité pour les appels showToast(...) depuis les templates
+window.showToast = function(titleOrMsg, descOrLevel, level = 'success') {
+  if (typeof window.showSocToast === 'function') {
+    if (descOrLevel && ['success', 'info', 'warning', 'critical'].includes(descOrLevel)) {
+      window.showSocToast('Sentinel SOC', titleOrMsg, descOrLevel);
+    } else if (descOrLevel) {
+      window.showSocToast(titleOrMsg, descOrLevel, level);
+    } else {
+      window.showSocToast('Sentinel SOC', titleOrMsg, 'success');
+    }
+  } else {
+    console.log(titleOrMsg);
+  }
+};
+
 // ── 3. Initialisation des Graphiques Interactifs (Chart.js) ──
 let timelineChartInstance = null;
 let distributionChartInstance = null;

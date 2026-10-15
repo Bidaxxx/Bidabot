@@ -62,6 +62,8 @@ class Database:
                     ALTER TABLE guilds ADD COLUMN IF NOT EXISTS gatekeeper_enabled BOOLEAN NOT NULL DEFAULT FALSE;
                     ALTER TABLE guilds ADD COLUMN IF NOT EXISTS gatekeeper_verified_role_id BIGINT;
                     ALTER TABLE guilds ADD COLUMN IF NOT EXISTS gatekeeper_channel_id BIGINT;
+                    ALTER TABLE guilds ADD COLUMN IF NOT EXISTS admin_alerts_dm BOOLEAN NOT NULL DEFAULT TRUE;
+                    ALTER TABLE guilds ADD COLUMN IF NOT EXISTS voice_check_interval INT NOT NULL DEFAULT 30;
                     CREATE TABLE IF NOT EXISTS whitelist (
                         guild_id BIGINT NOT NULL,
                         target_id BIGINT NOT NULL,
@@ -486,13 +488,13 @@ class Database:
     async def insert_evidence(self, guild_id: int, event_type: str, data: dict,
                                hash_: str, prev_hash: str | None, signature: str, ts: str):
         ts_str = str(ts)
-        if isinstance(ts, datetime.datetime):
+        if isinstance(ts, datetime):
             dt_val = ts
         else:
             try:
-                dt_val = datetime.datetime.fromisoformat(ts_str)
+                dt_val = datetime.fromisoformat(ts_str)
             except Exception:
-                dt_val = datetime.datetime.now(datetime.timezone.utc)
+                dt_val = datetime.now(timezone.utc)
 
         row = await self.pool.fetchrow(
             """INSERT INTO evidence_chain (guild_id, event_type, data, hash, prev_hash, signature, ts_iso, ts)
@@ -1036,11 +1038,45 @@ class Database:
         )
 
     async def set_guild_voice_interval(self, guild_id: int, check_interval_seconds: int) -> None:
-        """Met à jour l'intervalle de vérification de ping pour tous les salons vocaux du serveur."""
-        await self.pool.execute(
-            "UPDATE voice_antistress_config SET check_interval_seconds = $2 WHERE guild_id = $1",
-            guild_id, check_interval_seconds,
-        )
+        """Met à jour l'intervalle de vérification de ping pour le serveur et tous ses salons vocaux."""
+        try:
+            await self.pool.execute(
+                """INSERT INTO guilds (guild_id, voice_check_interval)
+                   VALUES ($1, $2)
+                   ON CONFLICT (guild_id) DO UPDATE SET voice_check_interval = EXCLUDED.voice_check_interval""",
+                guild_id, check_interval_seconds,
+            )
+        except Exception as e:
+            logger.warning("Erreur enregistrement voice_check_interval guilds : %s", e)
+        try:
+            await self.pool.execute(
+                "UPDATE voice_antistress_config SET check_interval_seconds = $2 WHERE guild_id = $1",
+                guild_id, check_interval_seconds,
+            )
+        except Exception as e:
+            logger.warning("Erreur enregistrement voice_antistress_config : %s", e)
+
+    async def get_guild_voice_interval(self, guild_id: int) -> int:
+        """Récupère l'intervalle de vérification de ping configuré pour un serveur."""
+        try:
+            row = await self.pool.fetchrow(
+                "SELECT voice_check_interval FROM guilds WHERE guild_id = $1",
+                guild_id,
+            )
+            if row and row["voice_check_interval"]:
+                return int(row["voice_check_interval"])
+        except Exception:
+            pass
+        try:
+            row = await self.pool.fetchrow(
+                "SELECT check_interval_seconds FROM voice_antistress_config WHERE guild_id = $1 LIMIT 1",
+                guild_id,
+            )
+            if row and row["check_interval_seconds"]:
+                return int(row["check_interval_seconds"])
+        except Exception:
+            pass
+        return 30
 
     async def remove_voice_antistress_config(self, guild_id: int, channel_id: int) -> bool:
         """Retire un salon vocal de la surveillance anti-stresseur."""
@@ -1072,54 +1108,7 @@ class Database:
             guild_id, old_channel_id, new_channel_id,
         )
 
-    # ── Sauvegardes & Restauration (Anti-Nuke) ──────────────────────────
-
-    async def save_guild_snapshot(
-        self, guild_id: int, label: str, snapshot_data: dict, channels_count: int, roles_count: int
-    ) -> int:
-        """Enregistre un snapshot complet de l'arborescence et des rôles d'un serveur."""
-        row = await self.pool.fetchrow(
-            """INSERT INTO guild_snapshots (guild_id, label, snapshot_data, channels_count, roles_count)
-               VALUES ($1, $2, $3::jsonb, $4, $5)
-               RETURNING id""",
-            guild_id, label, json.dumps(snapshot_data), channels_count, roles_count,
-        )
-        return int(row["id"])
-
-    async def get_guild_snapshots(self, guild_id: int, limit: int = 20) -> list[dict]:
-        """Retourne l'historique des snapshots d'un serveur."""
-        rows = await self.pool.fetch(
-            """SELECT id, guild_id, label, channels_count, roles_count, created_at
-               FROM guild_snapshots
-               WHERE guild_id = $1
-               ORDER BY created_at DESC
-               LIMIT $2""",
-            guild_id, limit,
-        )
-        return [dict(r) for r in rows]
-
-    async def get_guild_snapshot_by_id(self, snapshot_id: int) -> dict | None:
-        """Récupère les données complètes d'un snapshot spécifique."""
-        row = await self.pool.fetchrow(
-            """SELECT id, guild_id, label, snapshot_data, channels_count, roles_count, created_at
-               FROM guild_snapshots
-               WHERE id = $1""",
-            snapshot_id,
-        )
-        if not row:
-            return None
-        d = dict(row)
-        if isinstance(d["snapshot_data"], str):
-            d["snapshot_data"] = json.loads(d["snapshot_data"])
-        return d
-
-    async def delete_guild_snapshot(self, snapshot_id: int, guild_id: int) -> bool:
-        """Supprime un snapshot."""
-        res = await self.pool.execute(
-            "DELETE FROM guild_snapshots WHERE id = $1 AND guild_id = $2",
-            snapshot_id, guild_id,
-        )
-        return "DELETE 1" in res
+    # ── Sauvegardes & Restauration (Anti-Nuke) — voir bloc ci-dessous ──
 
     # ── Enquête & Forensique Membre Approfondie ────────────────────────
 
